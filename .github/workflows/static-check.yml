@@ -5,12 +5,14 @@ on:
     paths:
       - 'docs/**'
       - 'scripts/**'
+      - 'supabase/migrations/**'
       - '.github/workflows/static-check.yml'
   pull_request:
     branches: [master]
     paths:
       - 'docs/**'
       - 'scripts/**'
+      - 'supabase/migrations/**'
       - '.github/workflows/static-check.yml'
 permissions:
   contents: read
