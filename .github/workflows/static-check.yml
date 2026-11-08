@@ -45,6 +45,8 @@ jobs:
         run: node --test scripts/contracts.test.mjs
       - name: Test campaign operations
         run: node --test scripts/campaigns.test.mjs
+      - name: Test Hajj and Umrah group operations
+        run: node --test scripts/pilgrim-groups.test.mjs
 
       - name: Test bilingual interactions
         run: node scripts/test-interactions.mjs
