@@ -1,0 +1,26 @@
+name: Validate Zarzour static pages
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'docs/**'
+      - 'scripts/**'
+      - '.github/workflows/static-check.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'docs/**'
+      - 'scripts/**'
+      - '.github/workflows/static-check.yml'
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check static pages
+        run: node scripts/check-static-site.mjs
