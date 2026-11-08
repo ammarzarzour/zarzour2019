@@ -47,10 +47,10 @@ export function requiredReadinessFields(service) {
 
 export function programReadiness(program) {
   const required = requiredReadinessFields(program.service);
-  const completed = required.filter((field) => program[field]).length;
+  const completed = required.filter((field) => program[field] === true).length;
   return {
     score: Math.round((completed / required.length) * 100),
-    blockers: required.filter((field) => !program[field])
+    blockers: required.filter((field) => program[field] !== true)
   };
 }
 
