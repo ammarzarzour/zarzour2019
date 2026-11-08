@@ -58,3 +58,17 @@ test("draft persistence warns on storage failure in Arabic and English",async()=
   assert.equal(runInNewContext(helper+";saveDraft({})",context),true);
  }
 });
+
+test("restoring drafts ignores malformed fields and non-array modules",async()=>{
+ const {readFileSync}=await import("node:fs"),{runInNewContext}=await import("node:vm");
+ const source=readFileSync(new URL("../docs/soft/brief.mjs",import.meta.url),"utf8");
+ const helper=source.slice(source.indexOf("function restore()"),source.indexOf('document.getElementById("language-toggle").addEventListener'));
+ for(const modules of ["crm",null,{},42,["crm"]]){
+  const boxes=[{value:"crm",checked:false},{value:"content",checked:false}];
+  const elements=Object.fromEntries(["name","type","goal","language","phase"].map(id=>[id,{value:"original"}]));
+  const draft={name:{bad:true},goal:"Valid goal",modules};
+  runInNewContext(helper+";restore()",{draftKey:"test",localStorage:{getItem:()=>JSON.stringify(draft)},form:{elements,querySelectorAll:()=>boxes}});
+  assert.equal(elements.name.value,"original");assert.equal(elements.goal.value,"Valid goal");
+  assert.equal(boxes[0].checked,Array.isArray(modules));assert.equal(boxes[1].checked,false);
+ }
+});
