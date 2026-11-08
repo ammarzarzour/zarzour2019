@@ -1,4 +1,4 @@
-import { calculateMetrics, filterPrograms, normalizeProgram, programReadiness, safePrograms, validateProgram } from "./operations-model.mjs";
+import { calculateMetrics, filterPrograms, normalizeProgram, programReadiness, safePrograms, validateProgram, requiredReadinessFields } from "./operations-model.mjs";
 
 const storageKey = "zarzour-operations-programs-v1";
 const languageKey = "zarzour-language";
@@ -57,11 +57,12 @@ function render() {
     const readiness=programReadiness(item); const readinessText=readiness.blockers.length ? `${readiness.score}% · ${readiness.blockers.map(t).join(lang==="ar"?"، ":", ")}` : `100% · ${t("complete")}`;
     const values = [t(item.service), item.destination, item.departure, `${item.reserved} / ${item.capacity}`, `${Math.round(item.reserved / item.capacity * 100)}%`, readinessText, t(item.status)];
     values.forEach((value) => { const cell=document.createElement("td"); cell.textContent=value; row.append(cell); });
-    const action=document.createElement("td"); const button=document.createElement("button"); button.type="button"; button.className="delete"; button.textContent=t("delete"); button.dataset.id=item.id; action.append(button); row.append(action); tbody.append(row);
+    const action=document.createElement("td"); const button=document.createElement("button"); button.type="button"; button.className="delete"; button.textContent=t("delete"); button.dataset.id=item.id; for(const field of requiredReadinessFields(item.service)){const label=document.createElement("label"),box=document.createElement("input");box.type="checkbox";box.checked=item[field]===true;box.dataset.programId=item.id;box.dataset.field=field;label.append(box,document.createTextNode(t(field)));label.style.display="block";action.append(label)}action.append(button); row.append(action); tbody.append(row);
   }
 }
 function setMessage(text, error=false) { message.textContent=text; message.className=error?"message error":"message"; message.hidden=false; }
 
+tbody.addEventListener("change",event=>{const {programId,field}=event.target.dataset;const target=programs.find(item=>item.id===programId);if(!target||!requiredReadinessFields(target.service).includes(field))return;programs=programs.map(item=>item.id===programId?{...item,[field]:event.target.checked===true}:item);savePrograms();render();});
 document.getElementById("language").addEventListener("click",()=>{lang=lang==="ar"?"en":"ar";try{localStorage.setItem(languageKey,lang)}catch{}applyLanguage();});
 for (const id of ["search","filter-service","filter-status"]) document.getElementById(id).addEventListener(id==="search"?"input":"change",render);
 tbody.addEventListener("click",(event)=>{const id=event.target.dataset.id;if(!id)return;programs=programs.filter((item)=>item.id!==id);savePrograms();render();});
