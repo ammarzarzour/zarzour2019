@@ -1,16 +1,16 @@
-import { calculateMetrics, filterPrograms, normalizeProgram, safePrograms, validateProgram } from "./operations-model.mjs";
+import { calculateMetrics, filterPrograms, normalizeProgram, programReadiness, safePrograms, validateProgram } from "./operations-model.mjs";
 
 const storageKey = "zarzour-operations-programs-v1";
 const languageKey = "zarzour-language";
 const today = new Date().toISOString().slice(0, 10);
 const demoPrograms = [
-  {id:"demo-umrah",service:"umrah",destination:"مكة والمدينة",departure:"2099-02-15",capacity:48,reserved:31,status:"documents"},
-  {id:"demo-tour",service:"tourism",destination:"دمشق ومعلولا",departure:"2099-03-08",capacity:24,reserved:18,status:"ready"},
-  {id:"demo-visa",service:"visa",destination:"طلبات تأشيرات",departure:"2099-01-25",capacity:80,reserved:44,status:"planning"}
+  {id:"demo-umrah",service:"umrah",destination:"مكة والمدينة",departure:"2099-02-15",capacity:48,reserved:31,status:"documents",contractReady:true,partnerVerified:true,documentsReady:false,returnPlanReady:true},
+  {id:"demo-tour",service:"tourism",destination:"دمشق ومعلولا",departure:"2099-03-08",capacity:24,reserved:18,status:"ready",contractReady:true,partnerVerified:true,documentsReady:true,returnPlanReady:true},
+  {id:"demo-visa",service:"visa",destination:"طلبات تأشيرات",departure:"2099-01-25",capacity:80,reserved:44,status:"planning",contractReady:false,partnerVerified:true,documentsReady:false,returnPlanReady:false}
 ];
 const words = {
-  ar:{travel:"سفر",tourism:"سياحة",visa:"تأشيرات",hajj:"حج",umrah:"عمرة",planning:"تخطيط",documents:"تجهيز الوثائق",ready:"جاهز",active:"قيد التنفيذ",completed:"مكتمل",empty:"لا توجد برامج مطابقة.",delete:"حذف",stored:"تم حفظ البرنامج على هذا الجهاز فقط.",reset:"تمت استعادة البيانات التجريبية.",invalid:"راجع الحقول المحددة: ",service:"الخدمة",destination:"الوجهة",departure:"تاريخ الانطلاق",capacity:"السعة",reserved:"المحجوز",status:"الحالة"},
-  en:{travel:"Travel",tourism:"Tourism",visa:"Visas",hajj:"Hajj",umrah:"Umrah",planning:"Planning",documents:"Documents",ready:"Ready",active:"Active",completed:"Completed",empty:"No matching programs.",delete:"Delete",stored:"Program saved on this device only.",reset:"Demo data restored.",invalid:"Review these fields: ",service:"service",destination:"destination",departure:"departure",capacity:"capacity",reserved:"reserved",status:"status"}
+  ar:{travel:"سفر",tourism:"سياحة",visa:"تأشيرات",hajj:"حج",umrah:"عمرة",planning:"تخطيط",documents:"تجهيز الوثائق",ready:"جاهز",active:"قيد التنفيذ",completed:"مكتمل",empty:"لا توجد برامج مطابقة.",delete:"حذف",stored:"تم حفظ البرنامج على هذا الجهاز فقط.",reset:"تمت استعادة البيانات التجريبية.",invalid:"راجع الحقول المحددة: ",service:"الخدمة",destination:"الوجهة",departure:"تاريخ الانطلاق",capacity:"السعة",reserved:"المحجوز",status:"الحالة",contractReady:"العقد",partnerVerified:"الشريك الموثق",documentsReady:"الوثائق",returnPlanReady:"خطة العودة",complete:"مكتمل"},
+  en:{travel:"Travel",tourism:"Tourism",visa:"Visas",hajj:"Hajj",umrah:"Umrah",planning:"Planning",documents:"Documents",ready:"Ready",active:"Active",completed:"Completed",empty:"No matching programs.",delete:"Delete",stored:"Program saved on this device only.",reset:"Demo data restored.",invalid:"Review these fields: ",service:"service",destination:"destination",departure:"departure",capacity:"capacity",reserved:"reserved",status:"status",contractReady:"contract",partnerVerified:"verified partner",documentsReady:"documents",returnPlanReady:"return plan",complete:"complete"}
 };
 let lang;
 try { lang = localStorage.getItem(languageKey); } catch {}
@@ -49,11 +49,12 @@ function render() {
   tbody.replaceChildren();
   if (!visible.length) {
     const row = document.createElement("tr"); const cell = document.createElement("td");
-    cell.colSpan = 7; cell.className = "empty"; cell.textContent = t("empty"); row.append(cell); tbody.append(row); return;
+    cell.colSpan = 8; cell.className = "empty"; cell.textContent = t("empty"); row.append(cell); tbody.append(row); return;
   }
   for (const item of visible) {
     const row = document.createElement("tr");
-    const values = [t(item.service), item.destination, item.departure, `${item.reserved} / ${item.capacity}`, `${Math.round(item.reserved / item.capacity * 100)}%`, t(item.status)];
+    const readiness=programReadiness(item); const readinessText=readiness.blockers.length ? `${readiness.score}% · ${readiness.blockers.map(t).join(lang==="ar"?"، ":", ")}` : `100% · ${t("complete")}`;
+    const values = [t(item.service), item.destination, item.departure, `${item.reserved} / ${item.capacity}`, `${Math.round(item.reserved / item.capacity * 100)}%`, readinessText, t(item.status)];
     values.forEach((value) => { const cell=document.createElement("td"); cell.textContent=value; row.append(cell); });
     const action=document.createElement("td"); const button=document.createElement("button"); button.type="button"; button.className="delete"; button.textContent=t("delete"); button.dataset.id=item.id; action.append(button); row.append(action); tbody.append(row);
   }

@@ -1,5 +1,6 @@
 export const services = ["travel", "tourism", "visa", "hajj", "umrah"];
 export const statuses = ["planning", "documents", "ready", "active", "completed"];
+export const readinessFields = ["contractReady", "partnerVerified", "documentsReady", "returnPlanReady"];
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -31,7 +32,25 @@ export function normalizeProgram(input, id = `program-${Date.now()}`) {
     departure: input.departure,
     capacity: Number(input.capacity),
     reserved: Number(input.reserved),
-    status: input.status
+    status: input.status,
+    contractReady: input.contractReady === true || input.contractReady === "on",
+    partnerVerified: input.partnerVerified === true || input.partnerVerified === "on",
+    documentsReady: input.documentsReady === true || input.documentsReady === "on",
+    returnPlanReady: input.returnPlanReady === true || input.returnPlanReady === "on"
+  };
+}
+
+export function requiredReadinessFields(service) {
+  const required = ["contractReady", "partnerVerified", "documentsReady"];
+  return service === "visa" ? required : [...required, "returnPlanReady"];
+}
+
+export function programReadiness(program) {
+  const required = requiredReadinessFields(program.service);
+  const completed = required.filter((field) => program[field]).length;
+  return {
+    score: Math.round((completed / required.length) * 100),
+    blockers: required.filter((field) => !program[field])
   };
 }
 
@@ -40,10 +59,12 @@ export function calculateMetrics(programs, today = new Date().toISOString().slic
   const totalReserved = programs.reduce((sum, item) => sum + Number(item.reserved || 0), 0);
   const upcoming = programs.filter((item) => item.departure >= today && item.status !== "completed").length;
   const ready = programs.filter((item) => item.status === "ready").length;
+  const blocked = programs.filter((item) => ["ready", "active"].includes(item.status) && programReadiness(item).blockers.length).length;
   return {
     programs: programs.length,
     upcoming,
     ready,
+    blocked,
     openSeats: Math.max(0, totalCapacity - totalReserved),
     utilization: totalCapacity ? Math.round((totalReserved / totalCapacity) * 100) : 0
   };
