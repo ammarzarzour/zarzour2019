@@ -35,5 +35,9 @@ export function filterPartners(partners,filters={}){
 
 export function safePartners(value){
   if(!Array.isArray(value))return[];
-  return value.filter(item=>item&&typeof item.id==="string"&&!validatePartner(item).length).map(item=>normalizePartner(item,item.id));
+  const seen=new Set();
+  return value.filter(item=>{
+    if(!item||typeof item.id!=="string"||!item.id.trim()||seen.has(item.id)||validatePartner(item).length)return false;
+    seen.add(item.id);return true;
+  }).map(item=>normalizePartner(item,item.id));
 }
