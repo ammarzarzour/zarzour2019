@@ -20,8 +20,8 @@ export function normalizePartner(input,id=`partner-${Date.now()}`){
 }
 
 export function verification(partner){
-  const complete=verificationFields.filter(field=>partner[field]).length;
-  return {score:complete*25,status:complete===4?"verified":complete?"in_review":"pending",missing:verificationFields.filter(field=>!partner[field])};
+  const complete=verificationFields.filter(field=>partner[field]===true).length;
+  return {score:complete*25,status:complete===4?"verified":complete?"in_review":"pending",missing:verificationFields.filter(field=>partner[field]!==true)};
 }
 
 export function partnerMetrics(partners){

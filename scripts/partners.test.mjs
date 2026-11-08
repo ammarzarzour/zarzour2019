@@ -6,3 +6,13 @@ test("requires all four evidence checks before verification",()=>{assert.deepEqu
 test("calculates Syrian, international and review metrics",()=>{const syrian=normalizePartner({...valid,registrationChecked:true},"s"),international=normalizePartner({...valid,scope:"international",country:"Jordan",registrationChecked:true,contactChecked:true,serviceEvidenceChecked:true,agreementChecked:true},"i");assert.deepEqual(partnerMetrics([syrian,international]),{total:2,syrian:1,international:1,verified:1,inReview:1})});
 test("filters by name, scope and evidence-derived status",()=>{const a=normalizePartner(valid,"a"),b=normalizePartner({...valid,legalName:"Global Agency",scope:"international",country:"Jordan",registrationChecked:true,contactChecked:true,serviceEvidenceChecked:true,agreementChecked:true},"b");assert.deepEqual(filterPartners([a,b],{query:"global",scope:"international",status:"verified"}).map(x=>x.id),["b"])});
 test("discards corrupt local records",()=>{assert.deepEqual(safePartners([normalizePartner(valid,"ok"),{id:"bad",type:"other"}]).map(x=>x.id),["ok"]);assert.deepEqual(safePartners(null),[])});
+
+test("truthy corrupt evidence cannot grant verified status or appear in verified searches",()=>{
+ for(const value of ["false","true","on",1,{},[]]){
+  const record={...valid,id:"corrupt",registrationChecked:value,contactChecked:value,serviceEvidenceChecked:value,agreementChecked:value};
+  assert.equal(verification(record).score,0);
+  assert.equal(verification(record).missing.length,4);
+  assert.equal(filterPartners([record],{status:"verified"}).length,0);
+  assert.equal(partnerMetrics([record]).verified,0);
+ }
+});
