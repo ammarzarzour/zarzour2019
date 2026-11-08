@@ -24,3 +24,23 @@ test('return dates allow one-way and same-day trips but reject reversed or impos
  assert.match(requestSummary({...valid,returnDate:'2026-12-25'},'en'),/Expected return: 2026-12-25/);
  assert.match(requestSummary({...valid,returnDate:'2026-12-25'},'ar'),/العودة المتوقعة/);
 });
+
+test('editing a reviewed request clears stale output and updates return-date minimum', async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const {runInNewContext}=await import('node:vm');
+ const elements=new Map();
+ const element=id=>{if(!elements.has(id))elements.set(id,{value:'',textContent:'',hidden:false,listeners:{},addEventListener(event,fn){this.listeners[event]=fn;}});return elements.get(id);};
+ const source=(await readFile(new URL('../docs/request.mjs',import.meta.url),'utf8')).replace(/^import[^\n]+\n/,'');
+ runInNewContext(source,{validateRequest,requestSummary,Date,navigator:{language:'ar'},localStorage:{getItem:()=>null},document:{getElementById:element,querySelectorAll:()=>[],documentElement:{}}});
+ element('summary').textContent='old request';
+ element('error').textContent='old error';
+ element('departure').value='2027-01-20';
+ element('request').listeners.input();
+ assert.equal(element('summary').textContent,'');
+ assert.equal(element('error').textContent,'');
+ assert.equal(element('result').hidden,true);
+ assert.equal(element('returnDate').min,'2027-01-20');
+ element('departure').value='';
+ element('request').listeners.input();
+ assert.match(element('returnDate').min,/^\d{4}-\d{2}-\d{2}$/);
+});
