@@ -1,5 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+test('request errors identify fields, translate and hide outdated summaries', async()=>{
+ const {readFile}=await import('node:fs/promises');const {runInNewContext}=await import('node:vm');
+ const elements=new Map();let focused='';
+ const element=id=>{if(!elements.has(id))elements.set(id,{value:'',textContent:'',hidden:false,listeners:{},focus(){focused=id},addEventListener(event,fn){this.listeners[event]=fn}});return elements.get(id)};
+ const input={service:'umrah',destination:'',departure:'2020-01-01',travelers:'0',notes:'',returnDate:''};
+ const source=(await readFile(new URL('../docs/request.mjs',import.meta.url),'utf8')).replace(/^import[^\n]+\n/,'');
+ runInNewContext(source,{validateRequest,requestSummary,Date,FormData:class {constructor(){return Object.entries(input)}},navigator:{language:'ar'},localStorage:{getItem:()=>null,setItem(){}},document:{getElementById:element,querySelectorAll:()=>[],documentElement:{}}});
+ element('summary').textContent='outdated';element('request').listeners.submit({preventDefault(){}});
+ assert.equal(focused,'destination');assert.equal(element('result').hidden,true);assert.equal(element('summary').textContent,'');
+ assert.match(element('error').textContent,/وجهة/);assert.match(element('error').textContent,/200/);
+ element('language').listeners.click();assert.match(element('error').textContent,/destination/);assert.match(element('error').textContent,/departure/);
+ input.destination='Damascus';input.departure='2099-01-01';input.travelers='2';
+ element('request').listeners.submit({preventDefault(){}});assert.equal(element('error').textContent,'');assert.equal(element('result').hidden,false);assert.match(element('summary').textContent,/Damascus/);
+});
 test('home planner invalidates edits and prevents stale printing', async()=>{
  const {readFile}=await import('node:fs/promises');const {runInNewContext}=await import('node:vm');
  const elements=new Map();let prints=0;
@@ -59,4 +73,5 @@ test('editing a reviewed request clears stale output and updates return-date min
  element('request').listeners.input();
  assert.match(element('returnDate').min,/^\d{4}-\d{2}-\d{2}$/);
 });
+
 
