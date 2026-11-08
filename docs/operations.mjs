@@ -72,6 +72,8 @@ form.addEventListener("input",()=>{message.hidden=true;fields.forEach((id)=>docu
 form.addEventListener("submit",(event)=>{
   event.preventDefault(); const input=Object.fromEntries(new FormData(form)); const errors=validateProgram(input,today);
   if(errors.length){errors.forEach((id)=>document.getElementById(id).setAttribute("aria-invalid","true"));setMessage(t("invalid")+errors.map(t).join(lang==="ar"?"، ":", "),true);document.getElementById(errors[0]).focus();return;}
+  const blockers=programReadiness(normalizeProgram(input)).blockers;
+  if(["ready","active"].includes(input.status)&&blockers.length){setMessage(t("invalid")+blockers.map(t).join(lang==="ar"?"، ":", "),true);document.getElementById("status").focus();return;}
   programs.unshift(normalizeProgram(input,`program-${Date.now()}-${Math.random().toString(36).slice(2,8)}`));savePrograms();form.reset();document.getElementById("departure").min=today;setMessage(t("stored"));render();
 });
 applyLanguage();
