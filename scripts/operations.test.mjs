@@ -90,3 +90,13 @@ test("readiness accepts only explicit boolean evidence", () => {
   }
   assert.equal(programReadiness(base).score,100);
 });
+
+test("stored programs keep unique nonempty IDs without losing valid later records", () => {
+  const first=normalizeProgram(valid,"same");
+  const second={...first,destination:"Different program"};
+  const other={...first,id:"other"};
+  const result=safePrograms([null,{...first,id:" "},{...first,capacity:0},first,second,other]);
+  assert.deepEqual(result.map(item=>item.id),["same","other"]);
+  assert.equal(result[0].destination,first.destination);
+  assert.equal(result.filter(item=>item.id!=="same").length,1);
+});
