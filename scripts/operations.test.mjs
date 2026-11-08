@@ -50,3 +50,28 @@ test("ready count excludes incomplete programs and includes fully reviewed progr
  assert.equal(metrics.ready,1);
  assert.equal(metrics.blocked,1);
 });
+
+test("storage failures warn in both languages across operations and partners", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { runInNewContext } = await import("node:vm");
+  for (const page of ["operations", "partners"]) {
+    const source = readFileSync(new URL("../docs/" + page + ".mjs", import.meta.url), "utf8");
+    const name = page === "operations" ? "savePrograms" : "save";
+    const start = source.indexOf("function " + name + "()");
+    const end = source.indexOf("function t(key)", start);
+    assert.ok(start >= 0 && end > start);
+    for (const lang of ["ar", "en"]) {
+      const message = {hidden:true};
+      const context = {lang, message, programs:[], partners:[], storageKey:"test",
+        localStorage:{setItem(){throw new Error("quota");}},
+        setMessage(text,error){Object.assign(message,{textContent:text,hidden:false,error});}};
+      const code = source.slice(start,end) + "\n" + name + "()";
+      assert.equal(runInNewContext(code,context), false);
+      assert.equal(message.hidden,false);
+      assert.ok(message.textContent.length > 30);
+      assert.ok(message.error === true || message.className === "message error");
+      context.localStorage.setItem = () => {};
+      assert.equal(runInNewContext(code,context), true);
+    }
+  }
+});
