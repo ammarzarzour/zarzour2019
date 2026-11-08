@@ -34,5 +34,8 @@ jobs:
       - name: Test operations dashboard model
         run: node --test scripts/operations.test.mjs
 
+      - name: Test independent Zarzour Soft scope builder
+        run: node --test scripts/soft-brief.test.mjs
+
       - name: Test bilingual interactions
         run: node scripts/test-interactions.mjs
