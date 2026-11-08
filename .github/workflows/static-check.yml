@@ -26,3 +26,6 @@ jobs:
           node-version: 22
       - name: Check static pages
         run: node scripts/check-static-site.mjs
+
+      - name: Test trip request workflows
+        run: node --test scripts/request.test.mjs

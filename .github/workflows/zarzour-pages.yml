@@ -4,6 +4,8 @@ on:
     branches: [master]
     paths:
       - 'docs/**'
+      - 'scripts/**'
+      - 'supabase/migrations/**'
       - '.github/workflows/zarzour-pages.yml'
   workflow_dispatch:
 permissions:
@@ -21,6 +23,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate release before publishing
+        run: node scripts/check-static-site.mjs
+      - name: Test trip request workflows
+        run: node --test scripts/request.test.mjs
       - uses: actions/configure-pages@v5
         with:
           enablement: true
@@ -29,3 +38,4 @@ jobs:
           path: docs
       - id: deployment
         uses: actions/deploy-pages@v4
+

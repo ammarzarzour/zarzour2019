@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, access, readdir } from "node:fs/promises";
 import path from "node:path";
 const root = path.resolve("docs");
-const pages = ["index.html", "soft/index.html", "404.html"];
+const pages = ["index.html", "soft/index.html", "404.html", "request.html"];
 const idsByPage = new Map();
 for (const file of pages) {
   const html = await readFile(path.join(root, file), "utf8");
@@ -44,3 +44,4 @@ assert.ok(createdTables.size > 0, "No public tables found in migrations");
 assert.deepEqual([...createdTables].sort(), [...rlsTables].sort(), "Every created public table must enable RLS");
 assert.doesNotMatch(migrationSql, /\bcreate\s+policy\b/i, "Client access policies must stay disabled until an authorized access model is added");
 console.log(`Supabase migration checks passed: RLS enabled on all ${createdTables.size} public tables; no client policies are defined.`);
+
