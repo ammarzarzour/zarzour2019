@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, access } from "node:fs/promises";
+import { readFile, access, readdir } from "node:fs/promises";
 import path from "node:path";
 const root = path.resolve("docs");
 const pages = ["index.html", "soft/index.html", "404.html"];
@@ -33,3 +33,14 @@ for (const file of pages) {
   }
 }
 console.log("Static page checks passed: language declarations, unique IDs, local links, and inline JavaScript syntax.");
+
+const migrationDir = path.resolve("supabase/migrations");
+const migrationFiles = (await readdir(migrationDir)).filter((file) => file.endsWith(".sql")).sort();
+assert.ok(migrationFiles.length > 0, "No Supabase migrations found");
+const migrationSql = (await Promise.all(migrationFiles.map((file) => readFile(path.join(migrationDir, file), "utf8")))).join("\\n").replace(/--.*$/gm, "");
+const createdTables = new Set([...migrationSql.matchAll(/create\\s+table\\s+(?:if\\s+not\\s+exists\\s+)?public\\.([a-z0-9_]+)/gi)].map((match) => match[1].toLowerCase()));
+const rlsTables = new Set([...migrationSql.matchAll(/alter\\s+table\\s+public\\.([a-z0-9_]+)\\s+enable\\s+row\\s+level\\s+security\\s*;/gi)].map((match) => match[1].toLowerCase()));
+assert.ok(createdTables.size > 0, "No public tables found in migrations");
+assert.deepEqual([...createdTables].sort(), [...rlsTables].sort(), "Every created public table must enable RLS");
+assert.doesNotMatch(migrationSql, /\\bcreate\\s+policy\\b/i, "Client access policies must stay disabled until an authorized access model is added");
+console.log(`Supabase migration checks passed: RLS enabled on all ${createdTables.size} public tables; no client policies are defined.`);
