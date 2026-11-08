@@ -88,6 +88,6 @@
 <small style="display:block" data-ar="منتجات وخدمات تقنية مستقلة" data-en="Independent digital products and services">منتجات وخدمات تقنية مستقلة</small>
 </div>
 </footer>
-<script>(()=>{let lang=localStorage.getItem("zarzour-soft-language");if(!lang)lang=(navigator.language||"ar").toLowerCase().startsWith("en")?"en":"ar";const apply=()=>{document.documentElement.lang=lang;document.documentElement.dir=lang==="ar"?"rtl":"ltr";document.querySelectorAll("[data-ar][data-en]").forEach(el=>el.innerHTML=el.dataset[lang]);document.getElementById("lang").textContent=lang==="ar"?"English":"العربية"};document.getElementById("lang").addEventListener("click",()=>{lang=lang==="ar"?"en":"ar";localStorage.setItem("zarzour-soft-language",lang);apply()});apply()})();</script>
+<script>(()=>{let lang;try{lang=localStorage.getItem("zarzour-soft-language")}catch{}if(!["ar","en"].includes(lang))lang=(navigator.language||"ar").toLowerCase().startsWith("en")?"en":"ar";const apply=()=>{document.documentElement.lang=lang;document.documentElement.dir=lang==="ar"?"rtl":"ltr";document.querySelectorAll("[data-ar][data-en]").forEach(el=>el.innerHTML=el.dataset[lang]);document.getElementById("lang").textContent=lang==="ar"?"English":"العربية"};document.getElementById("lang").addEventListener("click",()=>{lang=lang==="ar"?"en":"ar";try{localStorage.setItem("zarzour-soft-language",lang)}catch{}apply()});apply()})();</script>
 </body>
 </html>
