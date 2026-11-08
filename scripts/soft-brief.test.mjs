@@ -45,3 +45,16 @@ test("Soft landing page survives blocked and corrupt browser storage",async()=>{
     assert.ok(["ar","en"].includes(document.documentElement.lang));
   }
 });
+
+test("draft persistence warns on storage failure in Arabic and English",async()=>{
+ const {readFileSync}=await import("node:fs"),{runInNewContext}=await import("node:vm");
+ const source=readFileSync(new URL("../docs/soft/brief.mjs",import.meta.url),"utf8");
+ const helper=source.slice(source.indexOf("function saveDraft("),source.indexOf("function applyLanguage()"));
+ for(const lang of ["ar","en"]){
+  const error={hidden:true},context={lang,error,draftKey:"test",localStorage:{setItem(){throw Error("quota")}}};
+  assert.equal(runInNewContext(helper+";saveDraft({})",context),false);
+  assert.equal(error.hidden,false);assert.ok(error.textContent.length>30);
+  context.localStorage.setItem=()=>{};
+  assert.equal(runInNewContext(helper+";saveDraft({})",context),true);
+ }
+});
