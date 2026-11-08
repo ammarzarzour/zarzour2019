@@ -30,6 +30,8 @@ jobs:
         run: node scripts/check-static-site.mjs
       - name: Test trip request workflows
         run: node --test scripts/request.test.mjs
+      - name: Test bilingual interactions
+        run: node scripts/test-interactions.mjs
       - uses: actions/configure-pages@v5
         with:
           enablement: true

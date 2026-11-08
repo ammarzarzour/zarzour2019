@@ -29,3 +29,7 @@ jobs:
 
       - name: Test trip request workflows
         run: node --test scripts/request.test.mjs
+
+
+      - name: Test bilingual interactions
+        run: node scripts/test-interactions.mjs
