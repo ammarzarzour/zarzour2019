@@ -34,6 +34,8 @@ jobs:
         run: node --test scripts/operations.test.mjs
       - name: Test independent Zarzour Soft scope builder
         run: node --test scripts/soft-brief.test.mjs
+      - name: Test partner verification register
+        run: node --test scripts/partners.test.mjs
       - name: Test bilingual interactions
         run: node scripts/test-interactions.mjs
       - uses: actions/configure-pages@v5
