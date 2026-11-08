@@ -32,7 +32,13 @@ function loadPrograms() {
     return safePrograms(JSON.parse(raw), today);
   } catch { return demoPrograms.map((item) => ({...item})); }
 }
-function savePrograms() { try { localStorage.setItem(storageKey, JSON.stringify(programs)); } catch {} }
+function savePrograms() {
+  try { localStorage.setItem(storageKey, JSON.stringify(programs)); return true; }
+  catch {
+    setMessage(lang === "ar" ? "تعذر الحفظ على هذا الجهاز. التعديلات متاحة في هذه الجلسة فقط وقد تضيع عند إغلاق الصفحة." : "Could not save on this device. Changes are available in this session only and may be lost when the page closes.", true);
+    return false;
+  }
+}
 function t(key) { return words[lang][key] || key; }
 function applyLanguage() {
   document.documentElement.lang = lang;
@@ -70,13 +76,13 @@ tbody.addEventListener("change",event=>{const id=event.target.dataset.statusProg
 document.getElementById("language").addEventListener("click",()=>{lang=lang==="ar"?"en":"ar";try{localStorage.setItem(languageKey,lang)}catch{}applyLanguage();});
 for (const id of ["search","filter-service","filter-status"]) document.getElementById(id).addEventListener(id==="search"?"input":"change",render);
 tbody.addEventListener("click",(event)=>{const id=event.target.dataset.id;if(!id)return;const index=programs.findIndex(item=>item.id===id);if(index<0)return;deletedProgram={item:programs[index],index};programs=programs.filter((item)=>item.id!==id);savePrograms();render();undoButton.hidden=false;});
-document.getElementById("reset-demo").addEventListener("click",()=>{programs=demoPrograms.map((item)=>({...item}));deletedProgram=null;undoButton.hidden=true;savePrograms();setMessage(t("reset"));render();});
+document.getElementById("reset-demo").addEventListener("click",()=>{programs=demoPrograms.map((item)=>({...item}));deletedProgram=null;undoButton.hidden=true;const saved=savePrograms();if(saved)setMessage(t("reset"));render();});
 form.addEventListener("input",()=>{message.hidden=true;fields.forEach((id)=>document.getElementById(id).removeAttribute("aria-invalid"));});
 form.addEventListener("submit",(event)=>{
   event.preventDefault(); const input=Object.fromEntries(new FormData(form)); const errors=validateProgram(input,today);
   if(errors.length){errors.forEach((id)=>document.getElementById(id).setAttribute("aria-invalid","true"));setMessage(t("invalid")+errors.map(t).join(lang==="ar"?"، ":", "),true);document.getElementById(errors[0]).focus();return;}
   const blockers=programReadiness(normalizeProgram(input)).blockers;
   if(["ready","active"].includes(input.status)&&blockers.length){setMessage(t("invalid")+blockers.map(t).join(lang==="ar"?"، ":", "),true);document.getElementById("status").focus();return;}
-  programs.unshift(normalizeProgram(input,`program-${Date.now()}-${Math.random().toString(36).slice(2,8)}`));savePrograms();form.reset();document.getElementById("departure").min=today;setMessage(t("stored"));render();
+  programs.unshift(normalizeProgram(input,`program-${Date.now()}-${Math.random().toString(36).slice(2,8)}`));const saved=savePrograms();form.reset();document.getElementById("departure").min=today;if(saved)setMessage(t("stored"));render();
 });
 applyLanguage();
