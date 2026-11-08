@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, access, readdir } from "node:fs/promises";
 import path from "node:path";
 const root = path.resolve("docs");
-const pages = ["index.html", "soft/index.html", "soft/brief.html", "404.html", "request.html", "operations.html", "partners.html", "customers.html", "contracts.html"];
+const pages = ["index.html", "soft/index.html", "soft/brief.html", "404.html", "request.html", "operations.html", "partners.html", "customers.html", "contracts.html", "campaigns.html"];
 const idsByPage = new Map();
 for (const file of pages) {
   const html = await readFile(path.join(root, file), "utf8");
