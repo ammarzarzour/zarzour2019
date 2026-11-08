@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile, access, readdir } from "node:fs/promises";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
 const root = path.resolve("docs");
 const pages = ["index.html", "soft/index.html", "404.html", "request.html"];
 const idsByPage = new Map();
@@ -12,6 +13,15 @@ for (const file of pages) {
   const repeated = ids.filter((id, i) => ids.indexOf(id) !== i);
   assert.deepEqual(repeated, [], file + ": duplicate element IDs");
   idsByPage.set(file, new Set(ids));
+  for (const [, src] of html.matchAll(/<script\b[^>]*\bsrc=["']([^"']+)["']/gi)) {
+    const url = new URL(src, "https://zarzour.invalid/docs/" + file);
+    assert.equal(url.origin, "https://zarzour.invalid", file + ": external script requires explicit review");
+    const asset = path.resolve(root, "." + url.pathname.replace(/^\/docs/, ""));
+    assert.ok(asset.startsWith(root + path.sep), file + ": script escapes site root");
+    await access(asset);
+    const check = spawnSync(process.execPath, ["--check", asset], {encoding:"utf8"});
+    assert.equal(check.status, 0, file + ": invalid script " + src + "\\n" + check.stderr);
+  }
   const scripts = [...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map((match) => match[1]).filter((s) => s.trim());
   for (const [index, script] of scripts.entries()) assert.doesNotThrow(() => new Function(script), file + ": invalid inline script " + (index + 1));
 }
