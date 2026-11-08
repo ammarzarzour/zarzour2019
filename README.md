@@ -12,7 +12,7 @@ Bilingual (Arabic/English) public preview for **Zarzour Travel, Tourism, Hajj & 
 
 ## GitHub Pages
 
-The site is deployed from the `docs/` directory by `.github/workflows/zarzour-pages.yml`. The workflow enables GitHub Pages and deploys on pushes to `master`.
+The deployment workflow uses the `docs/` directory and deploys on pushes to `master`. GitHub Pages is not active yet: the first run cannot create the Pages site because the Actions token lacks permission for that setup step. Enable Pages once in the repository settings, then rerun the workflow and verify the published URL.
 
 Current project page URL (before repository rename):  
 https://ammarzarzour.github.io/zarzour2019/
