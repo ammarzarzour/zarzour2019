@@ -75,3 +75,18 @@ test("storage failures warn in both languages across operations and partners", a
     }
   }
 });
+
+test("readiness accepts only explicit boolean evidence", () => {
+  const base={...valid,status:"ready",contractReady:true,partnerVerified:true,documentsReady:true,returnPlanReady:true};
+  for(const value of ["false","true","on",1,0,null,undefined,{},[]]){
+    for(const field of requiredReadinessFields("umrah")){
+      const item={...base,[field]:value};
+      assert.deepEqual(programReadiness(item).blockers,[field]);
+      assert.equal(programReadiness(item).score,75);
+      const metrics=calculateMetrics([item],"2099-01-01");
+      assert.equal(metrics.ready,0);
+      assert.equal(metrics.blocked,1);
+    }
+  }
+  assert.equal(programReadiness(base).score,100);
+});
