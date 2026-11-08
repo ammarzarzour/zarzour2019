@@ -81,6 +81,10 @@ export function filterPrograms(programs, filters = {}) {
 
 export function safePrograms(value, today = new Date().toISOString().slice(0, 10)) {
   if (!Array.isArray(value)) return [];
-  return value.filter((item) => item && typeof item.id === "string" && validateProgram(item, "2000-01-01").length === 0)
-    .map((item) => normalizeProgram(item, item.id));
+  const seen = new Set();
+  return value.filter((item) => {
+    if (!item || typeof item.id !== "string" || !item.id.trim() || seen.has(item.id) || validateProgram(item, "2000-01-01").length !== 0) return false;
+    seen.add(item.id);
+    return true;
+  }).map((item) => normalizeProgram(item, item.id));
 }
