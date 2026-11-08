@@ -25,8 +25,9 @@ document.getElementById("departure").min = today;
 
 function loadPrograms() {
   try {
-    const stored = safePrograms(JSON.parse(localStorage.getItem(storageKey)), today);
-    return stored.length ? stored : demoPrograms.map((item) => ({...item}));
+    const raw = localStorage.getItem(storageKey);
+    if (raw === null) return demoPrograms.map((item) => ({...item}));
+    return safePrograms(JSON.parse(raw), today);
   } catch { return demoPrograms.map((item) => ({...item})); }
 }
 function savePrograms() { try { localStorage.setItem(storageKey, JSON.stringify(programs)); } catch {} }
