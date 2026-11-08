@@ -16,3 +16,11 @@ test("truthy corrupt evidence cannot grant verified status or appear in verified
   assert.equal(partnerMetrics([record]).verified,0);
  }
 });
+
+test("stored partners retain unique nonempty IDs and isolate deletion",()=>{
+ const first=normalizePartner(valid,"same"),duplicate={...first,legalName:"Other company"},other={...first,id:"other"};
+ const records=safePartners([null,{...first,id:" "},{...first,services:[]},first,duplicate,other]);
+ assert.deepEqual(records.map(item=>item.id),["same","other"]);
+ assert.equal(records[0].legalName,first.legalName);
+ assert.equal(records.filter(item=>item.id!=="same").length,1);
+});
