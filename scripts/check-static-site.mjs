@@ -3,7 +3,7 @@ import { readFile, access, readdir } from "node:fs/promises";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 const root = path.resolve("docs");
-const pages = ["index.html", "soft/index.html", "404.html", "request.html"];
+const pages = ["index.html", "soft/index.html", "404.html", "request.html", "operations.html"];
 const idsByPage = new Map();
 for (const file of pages) {
   const html = await readFile(path.join(root, file), "utf8");

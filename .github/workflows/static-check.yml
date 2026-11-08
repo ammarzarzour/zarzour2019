@@ -31,5 +31,8 @@ jobs:
         run: node --test scripts/request.test.mjs
 
 
+      - name: Test operations dashboard model
+        run: node --test scripts/operations.test.mjs
+
       - name: Test bilingual interactions
         run: node scripts/test-interactions.mjs
