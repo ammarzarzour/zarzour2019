@@ -17,3 +17,10 @@ test('limits note length and generates bilingual summaries without booking confi
   assert.match(requestSummary(valid,'ar'),/ليس حجزاً مؤكداً/);
   assert.match(requestSummary(valid,'ar'),/مكة/);
 });
+
+test('return dates allow one-way and same-day trips but reject reversed or impossible dates',()=>{
+ assert.deepEqual(validateRequest({...valid,returnDate:'2026-12-20'},'2026-11-08'),[]);
+ for(const returnDate of ['2026-12-19','2027-02-30','invalid']) assert.ok(validateRequest({...valid,returnDate},'2026-11-08').includes('returnDate'));
+ assert.match(requestSummary({...valid,returnDate:'2026-12-25'},'en'),/Expected return: 2026-12-25/);
+ assert.match(requestSummary({...valid,returnDate:'2026-12-25'},'ar'),/العودة المتوقعة/);
+});
