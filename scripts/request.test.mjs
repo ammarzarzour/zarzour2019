@@ -1,5 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+test('home planner invalidates edits and prevents stale printing', async()=>{
+ const {readFile}=await import('node:fs/promises');const {runInNewContext}=await import('node:vm');
+ const elements=new Map();let prints=0;
+ const element=id=>{if(!elements.has(id))elements.set(id,{value:'',textContent:'',hidden:false,listeners:{},setAttribute(){},addEventListener(event,fn){this.listeners[event]=fn;}});return elements.get(id);};
+ const html=await readFile(new URL('../docs/index.html',import.meta.url),'utf8');
+ const script=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)][0][1];
+ runInNewContext(script,{Date,navigator:{language:'ar'},localStorage:{getItem:()=>null},window:{print:()=>prints++},document:{getElementById:element,querySelectorAll:()=>[],documentElement:{},addEventListener(){}}});
+ element('travelers').value='3';element('trip-days').value='10';element('trip-type').value='umrah';
+ for(const event of ['input','change']){
+  element('trip-form').listeners.submit({preventDefault(){}});assert.match(element('plan-result').textContent,/3/);assert.equal(element('print-plan').hidden,false);
+  element('print-plan').listeners.click();assert.equal(prints,1);
+  element('trip-form').listeners[event]();assert.equal(element('plan-result').textContent,'');assert.equal(element('print-plan').hidden,true);
+  element('print-plan').listeners.click();assert.equal(prints,1);prints=0;
+ }
+});
 import {validateRequest, requestSummary} from '../docs/request-model.mjs';
 const valid = {service:'umrah', destination:'مكة', departure:'2026-12-20', travelers:'2', notes:'برنامج مناسب للعائلة'};
 test('accepts each supported service and both group boundaries',()=>{
@@ -44,3 +59,4 @@ test('editing a reviewed request clears stale output and updates return-date min
  element('request').listeners.input();
  assert.match(element('returnDate').min,/^\d{4}-\d{2}-\d{2}$/);
 });
+
