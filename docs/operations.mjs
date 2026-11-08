@@ -16,10 +16,12 @@ let lang;
 try { lang = localStorage.getItem(languageKey); } catch {}
 if (!['ar','en'].includes(lang)) lang = (navigator.language || 'ar').toLowerCase().startsWith('en') ? 'en' : 'ar';
 let programs = loadPrograms();
+let deletedProgram = null;
 
 const form = document.getElementById("program-form");
 const tbody = document.getElementById("programs-body");
 const message = document.getElementById("message");
+const undoButton=document.createElement("button");undoButton.type="button";undoButton.className="secondary";undoButton.hidden=true;undoButton.addEventListener("click",()=>{if(!deletedProgram)return;if(!programs.some(item=>item.id===deletedProgram.item.id))programs.splice(Math.min(deletedProgram.index,programs.length),0,deletedProgram.item);deletedProgram=null;undoButton.hidden=true;savePrograms();render();});message.after(undoButton);
 const fields = ["service","destination","departure","capacity","reserved","status"];
 document.getElementById("departure").min = today;
 
@@ -38,6 +40,7 @@ function applyLanguage() {
   document.querySelectorAll("[data-ar][data-en]").forEach((node) => { node.textContent = node.dataset[lang]; });
   document.querySelectorAll("[data-ar-placeholder][data-en-placeholder]").forEach((node) => { node.placeholder = node.dataset[`${lang}Placeholder`]; });
   document.getElementById("language").textContent = lang === "ar" ? "English" : "العربية";
+  undoButton.textContent=lang==="ar"?"تراجع عن آخر حذف":"Undo last deletion";
   render();
 }
 function currentFilters() {
@@ -66,8 +69,8 @@ tbody.addEventListener("change",event=>{const {programId,field}=event.target.dat
 tbody.addEventListener("change",event=>{const id=event.target.dataset.statusProgramId;if(!id)return;const item=programs.find(p=>p.id===id),status=event.target.value;if(!item||!statuses.includes(status))return;const blockers=programReadiness(item).blockers;if(["ready","active"].includes(status)&&blockers.length){setMessage(t("invalid")+blockers.map(t).join(lang==="ar"?"، ":", "),true);render();return}programs=programs.map(p=>p.id===id?{...p,status}:p);savePrograms();render();});
 document.getElementById("language").addEventListener("click",()=>{lang=lang==="ar"?"en":"ar";try{localStorage.setItem(languageKey,lang)}catch{}applyLanguage();});
 for (const id of ["search","filter-service","filter-status"]) document.getElementById(id).addEventListener(id==="search"?"input":"change",render);
-tbody.addEventListener("click",(event)=>{const id=event.target.dataset.id;if(!id)return;programs=programs.filter((item)=>item.id!==id);savePrograms();render();});
-document.getElementById("reset-demo").addEventListener("click",()=>{programs=demoPrograms.map((item)=>({...item}));savePrograms();setMessage(t("reset"));render();});
+tbody.addEventListener("click",(event)=>{const id=event.target.dataset.id;if(!id)return;const index=programs.findIndex(item=>item.id===id);if(index<0)return;deletedProgram={item:programs[index],index};programs=programs.filter((item)=>item.id!==id);savePrograms();render();undoButton.hidden=false;});
+document.getElementById("reset-demo").addEventListener("click",()=>{programs=demoPrograms.map((item)=>({...item}));deletedProgram=null;undoButton.hidden=true;savePrograms();setMessage(t("reset"));render();});
 form.addEventListener("input",()=>{message.hidden=true;fields.forEach((id)=>document.getElementById(id).removeAttribute("aria-invalid"));});
 form.addEventListener("submit",(event)=>{
   event.preventDefault(); const input=Object.fromEntries(new FormData(form)); const errors=validateProgram(input,today);
