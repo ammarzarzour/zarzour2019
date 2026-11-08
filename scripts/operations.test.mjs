@@ -16,7 +16,7 @@ test("rejects invalid capacity, overbooking, dates and enumerations",()=>{
 
 test("calculates operational metrics without financial values",()=>{
   const programs=[normalizeProgram(valid,"p1"),normalizeProgram({...valid,service:"tourism",capacity:"10",reserved:"10",status:"ready"},"p2")];
-  assert.deepEqual(calculateMetrics(programs,"2099-01-01"),{programs:2,upcoming:2,ready:1,blocked:1,openSeats:30,utilization:50});
+  assert.deepEqual(calculateMetrics(programs,"2099-01-01"),{programs:2,upcoming:2,ready:0,blocked:1,openSeats:30,utilization:50});
 });
 
 test("tracks contracts, verified partners, documents and return planning",()=>{
@@ -41,4 +41,12 @@ test("filters by service, state and destination",()=>{
 test("discards corrupt local records",()=>{
   assert.deepEqual(safePrograms([{...normalizeProgram(valid,"ok")},{id:"bad",service:"other"}],"2099-01-01").map(x=>x.id),["ok"]);
   assert.deepEqual(safePrograms(null),[]);
+});
+
+test("ready count excludes incomplete programs and includes fully reviewed programs",()=>{
+ const complete=normalizeProgram({...valid,status:"ready",contractReady:true,partnerVerified:true,documentsReady:true,returnPlanReady:true},"complete");
+ const incomplete=normalizeProgram({...valid,status:"ready"},"incomplete");
+ const metrics=calculateMetrics([complete,incomplete],"2099-01-01");
+ assert.equal(metrics.ready,1);
+ assert.equal(metrics.blocked,1);
 });

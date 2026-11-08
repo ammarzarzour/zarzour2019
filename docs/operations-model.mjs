@@ -58,7 +58,7 @@ export function calculateMetrics(programs, today = new Date().toISOString().slic
   const totalCapacity = programs.reduce((sum, item) => sum + Number(item.capacity || 0), 0);
   const totalReserved = programs.reduce((sum, item) => sum + Number(item.reserved || 0), 0);
   const upcoming = programs.filter((item) => item.departure >= today && item.status !== "completed").length;
-  const ready = programs.filter((item) => item.status === "ready").length;
+  const ready = programs.filter((item) => item.status === "ready" && programReadiness(item).blockers.length === 0).length;
   const blocked = programs.filter((item) => ["ready", "active"].includes(item.status) && programReadiness(item).blockers.length).length;
   return {
     programs: programs.length,
