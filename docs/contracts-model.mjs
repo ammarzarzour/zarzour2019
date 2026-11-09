@@ -35,3 +35,11 @@ export function contractMetrics(items,today){
 export function filterContracts(items,{query="",type="",status=""}={}){
  const needle=query.trim().toLocaleLowerCase();return items.filter(x=>(!type||x.type===type)&&(!status||x.status===status)&&(!needle||x.reference.toLocaleLowerCase().includes(needle)||x.notes.toLocaleLowerCase().includes(needle)));
 }
+
+export function upsertContract(items,input,id) {
+ const errors=validateContract(input);
+ if(errors.length) return {errors,items};
+ const item=normalizeContract(input,id);
+ if(["approved","active"].includes(item.status)&&contractReadiness(item).blockers.length) return {errors:["obligations"],items};
+ return {errors:[],items:items.some(existing=>existing.id===id)?items.map(existing=>existing.id===id?item:existing):[item,...items]};
+}
