@@ -80,3 +80,11 @@ export function filterBookings(items, { query = "", service = "", status = "" } 
   return items.filter(item => (!service || item.service === service) && (!status || item.status === status) && (!needle || `${item.reference} ${item.supplierReference} ${item.notes}`.toLocaleLowerCase().includes(needle)));
 }
 
+
+export function upsertBooking(items, input, id) {
+  const errors = validateBooking(input);
+  const normalized = normalizeBooking(input, id);
+  if (items.some(item => item.id !== id && item.reference.trim().toUpperCase() === normalized.reference)) errors.push("duplicateReference");
+  if (errors.length) return { errors, items };
+  return { errors: [], items: items.some(item => item.id === id) ? items.map(item => item.id === id ? normalized : item) : [normalized, ...items] };
+}

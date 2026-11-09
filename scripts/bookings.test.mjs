@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { bookingMetrics, bookingReadiness, filterBookings, normalizeBooking, safeBookings, validateBooking } from "../docs/bookings-model.mjs";
+import { bookingMetrics, bookingReadiness, filterBookings, normalizeBooking, safeBookings, validateBooking, upsertBooking } from "../docs/bookings-model.mjs";
 
 const valid = { reference: "BK-201", service: "flight", status: "confirmed", travelers: 4, startDate: "2026-11-12", endDate: "2026-11-12", supplierReference: "SUP-88", supplierConfirmed: true, documentsChecked: true, itineraryIssued: true, notes: "Synthetic test" };
 
@@ -41,3 +41,12 @@ test("filters by service, status and supplier reference", () => {
   assert.deepEqual(filterBookings(items, { query: "hotel-4", service: "hotel", status: "hold" }).map(item => item.id), ["b"]);
 });
 
+
+test("updates a booking without adding a second record",()=>{
+ const before=[normalizeBooking(valid,"a")]; const result=upsertBooking(before,{...valid,status:"completed"},"a");
+ assert.deepEqual(result.errors,[]);assert.equal(result.items.length,1);assert.equal(result.items[0].status,"completed");assert.equal(before[0].status,"confirmed");
+});
+test("rejects duplicate references case-insensitively without changing records",()=>{
+ const before=[normalizeBooking(valid,"a")];const result=upsertBooking(before,{...valid,reference:" bk-201 "},"b");
+ assert.deepEqual(result.errors,["duplicateReference"]);assert.equal(result.items,before);
+});
