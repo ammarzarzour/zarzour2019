@@ -32,8 +32,8 @@ export function contractMetrics(items,today){
  const plus30=new Date(Date.parse(today+"T00:00:00Z")+30*86400000).toISOString().slice(0,10);
  return {total:items.length,review:items.filter(x=>x.status==="review").length,active:items.filter(x=>x.status==="active").length,blocked:live.filter(x=>contractReadiness(x).blockers.length>0).length,expired:live.filter(x=>x.endDate&&x.endDate<today).length,expiring:live.filter(x=>x.endDate&&x.endDate>=today&&x.endDate<=plus30).length,completed:items.filter(x=>x.status==="completed").length};
 }
-export function filterContracts(items,{query="",type="",status=""}={}){
- const needle=query.trim().toLocaleLowerCase();return items.filter(x=>(!type||x.type===type)&&(!status||x.status===status)&&(!needle||x.reference.toLocaleLowerCase().includes(needle)||x.notes.toLocaleLowerCase().includes(needle)));
+export function filterContracts(items,{query="",type="",status="",attention="",today=""}={}){
+ const needle=query.trim().toLocaleLowerCase();return items.filter(x=>(!attention||contractAttention(x,today).includes(attention))&&(!type||x.type===type)&&(!status||x.status===status)&&(!needle||x.reference.toLocaleLowerCase().includes(needle)||x.notes.toLocaleLowerCase().includes(needle)));
 }
 
 export function upsertContract(items,input,id) {
@@ -43,4 +43,14 @@ export function upsertContract(items,input,id) {
  if(items.some(existing=>existing.id!==id&&existing.reference.trim().toUpperCase()===item.reference.toUpperCase())) return {errors:["duplicateReference"],items};
  if(["approved","active"].includes(item.status)&&contractReadiness(item).blockers.length) return {errors:["obligations"],items};
  return {errors:[],items:items.some(existing=>existing.id===id)?items.map(existing=>existing.id===id?item:existing):[item,...items]};
+}
+
+export function contractAttention(item,today){
+ if(!["approved","active"].includes(item.status))return [];
+ const alerts=[];
+ if(contractReadiness(item).blockers.length)alerts.push("blocked");
+ if(item.endDate&&item.endDate<today)alerts.push("expired");
+ const limit=new Date(Date.parse(today+"T00:00:00Z")+30*86400000).toISOString().slice(0,10);
+ if(item.endDate&&item.endDate>=today&&item.endDate<=limit)alerts.push("expiring");
+ return alerts;
 }

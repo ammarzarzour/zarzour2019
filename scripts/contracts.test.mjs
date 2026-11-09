@@ -1,5 +1,5 @@
 import test from "node:test";import assert from "node:assert/strict";
-import {contractMetrics,contractReadiness,filterContracts,normalizeContract,safeContracts,validateContract,upsertContract} from "../docs/contracts-model.mjs";
+import {contractAttention,contractMetrics,contractReadiness,filterContracts,normalizeContract,safeContracts,validateContract,upsertContract} from "../docs/contracts-model.mjs";
 const valid={reference:"CTR-100",type:"pilgrim_group",scope:"umrah",status:"review",startDate:"2099-01-01",endDate:"2099-03-01",returnResponsibility:"on",guaranteeReady:"on",penaltyReviewed:"on",notes:"Synthetic contract record"};
 test("validates and normalizes a non-personal contract",()=>{assert.deepEqual(validateContract(valid),[]);assert.deepEqual(normalizeContract(valid,"c1"),{...valid,id:"c1",returnResponsibility:true,guaranteeReady:true,penaltyReviewed:true,notes:valid.notes})});
 test("rejects invalid dates, ranges and enums",()=>{assert.deepEqual(validateContract({...valid,reference:"",type:"other",scope:"payment",status:"signed",startDate:"2099-02-30",endDate:"2098-01-01",notes:"x".repeat(241)}),["reference","type","scope","status","startDate","notes"])});
@@ -45,4 +45,18 @@ test("rejects duplicate contract references on creation and editing",()=>{
  assert.deepEqual(result.errors,["duplicateReference"]);assert.equal(result.items,before);
  }
  assert.deepEqual(upsertContract(before,{...valid,reference:" ctr-100 "},"a").errors,[]);
+});
+
+test("follow-up filters locate expired, expiring and blocked live contracts",()=>{
+ const items=[
+ normalizeContract({...valid,status:"active",endDate:"2099-01-09",guaranteeReady:false},"expired"),
+ normalizeContract({...valid,status:"approved",endDate:"2099-02-09"},"soon"),
+ normalizeContract({...valid,status:"active",endDate:"2099-02-10"},"later"),
+ normalizeContract({...valid,status:"completed",endDate:"2099-01-09",guaranteeReady:false},"closed")];
+ assert.deepEqual(contractAttention(items[0],"2099-01-10"),["blocked","expired"]);
+ assert.deepEqual(contractAttention(items[3],"2099-01-10"),[]);
+ for(const [attention,id] of [["expired","expired"],["expiring","soon"],["blocked","expired"]])
+ assert.deepEqual(filterContracts(items,{attention,today:"2099-01-10"}).map(x=>x.id),[id]);
+ assert.equal(filterContracts(items,{attention:"expired",today:"2099-01-10",status:"approved"}).length,0);
+ assert.equal(filterContracts(items).length,4);
 });
