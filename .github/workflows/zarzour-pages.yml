@@ -58,6 +58,8 @@ jobs:
         run: node --test scripts/visas.test.mjs
       - name: Test booking operations
         run: node --test scripts/bookings.test.mjs
+      - name: Test accounting journal
+        run: node --test scripts/accounting.test.mjs
       - name: Test bilingual interactions
         run: node scripts/test-interactions.mjs
       - uses: actions/configure-pages@v5
