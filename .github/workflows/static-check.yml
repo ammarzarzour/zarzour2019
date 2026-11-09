@@ -53,6 +53,8 @@ jobs:
         run: node --test scripts/soft-projects.test.mjs
       - name: Test guarantee operations register
         run: node --test scripts/guarantees.test.mjs
+      - name: Test verified organization directory
+        run: node --test scripts/directory.test.mjs
 
       - name: Test bilingual interactions
         run: node scripts/test-interactions.mjs
