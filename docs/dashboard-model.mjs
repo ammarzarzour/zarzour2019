@@ -56,3 +56,15 @@ export function contractSnapshot(items, today) {
   ready: live.filter(item => item.status === "active" && !contractReadiness(item).blockers.length && (!item.endDate || item.endDate >= today)).length
  };
 }
+
+export function readDashboardModule(definition, storage) {
+ try {
+  const raw = storage.getItem(definition.key);
+  const parsed = raw === null ? [] : JSON.parse(raw);
+  if (!Array.isArray(parsed)) throw new TypeError("Stored records must be an array");
+  const items = definition.safe(parsed);
+  return {id:definition.id,href:definition.href,...definition.metrics(items)};
+ } catch {
+  return {id:definition.id,href:definition.href,total:0,alerts:1,ready:0,unavailable:true};
+ }
+}
