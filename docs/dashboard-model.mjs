@@ -1,3 +1,5 @@
+import { contractReadiness } from "./contracts-model.mjs";
+
 export const dashboardModuleIds = ["operations", "bookings", "visas", "customers", "campaigns", "groups", "contracts", "guarantees", "accounting", "commissions", "partners", "directory"];
 
 function count(value) {
@@ -43,3 +45,13 @@ export function summarizeModules(value) {
   };
 }
 
+
+export function contractSnapshot(items, today) {
+ const live = items.filter(item => ["approved", "active"].includes(item.status));
+ const limit = new Date(Date.parse(today + "T00:00:00Z") + 30 * 86400000).toISOString().slice(0, 10);
+ return {
+  total: items.length,
+  alerts: live.filter(item => contractReadiness(item).blockers.length > 0 || (item.endDate && item.endDate <= limit)).length,
+  ready: live.filter(item => item.status === "active" && !contractReadiness(item).blockers.length && (!item.endDate || item.endDate >= today)).length
+ };
+}
