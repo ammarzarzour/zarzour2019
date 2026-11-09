@@ -16,7 +16,7 @@ function amountMinor(input) {
 }
 
 function validDate(value) {
-  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || "")) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`)) && new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) === value;
 }
 
 export function validateJournalEntry(input) {
@@ -71,7 +71,7 @@ export function safeJournalEntries(value) {
 }
 
 export function journalMetrics(items) {
-  const posted = items.filter(item => item.status === "posted");
+  const posted = items.filter(item => item.status === "posted" && journalReadiness(item).ready);
   const totals = Object.fromEntries(currencies.map(currency => [currency, posted.filter(item => item.currency === currency).reduce((sum, item) => sum + item.amountMinor, 0)]));
   return {
     total: items.length,

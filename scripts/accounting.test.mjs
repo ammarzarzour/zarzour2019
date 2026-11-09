@@ -12,3 +12,15 @@ test("sanitizes duplicate and malformed stored entries",()=>{const first=normali
 test("calculates posted totals without counting drafts or void entries",()=>{const items=[normalizeJournalEntry(valid,"a"),normalizeJournalEntry({...valid,reference:"JR-302",status:"review",amount:"20",evidenceChecked:false},"b"),normalizeJournalEntry({...valid,reference:"JR-303",status:"void",amount:"500"},"c")];assert.deepEqual(journalMetrics(items),{total:3,draft:0,review:1,posted:1,blocked:1,void:1,totals:{USD:12550,SAR:0,SYP:0,EUR:0}})});
 test("filters by kind, status, currency and reference",()=>{const items=[normalizeJournalEntry(valid,"a"),normalizeJournalEntry({...valid,reference:"EX-4",kind:"expense",status:"draft",currency:"SAR"},"b")];assert.deepEqual(filterJournalEntries(items,{query:"ex-4",kind:"expense",status:"draft",currency:"SAR"}).map(item=>item.id),["b"])});
 
+
+test("excludes unapproved posted entries from posted totals but flags them",()=>{
+ const items=[normalizeJournalEntry(valid,"ok"),normalizeJournalEntry({...valid,reference:"JR-999",approvedChecked:false},"blocked")];
+ const metrics=journalMetrics(items);
+ assert.equal(metrics.total,2);assert.equal(metrics.posted,1);assert.equal(metrics.blocked,1);assert.equal(metrics.totals.USD,12550);
+ assert.equal(safeJournalEntries(items).length,2);
+});
+test("rejects impossible calendar dates",()=>{
+ assert.ok(validateJournalEntry({...valid,entryDate:"2026-02-30"}).includes("entryDate"));
+ assert.ok(validateJournalEntry({...valid,entryDate:"2026-02-29"}).includes("entryDate"));
+ assert.deepEqual(validateJournalEntry({...valid,entryDate:"2028-02-29"}),[]);
+});
