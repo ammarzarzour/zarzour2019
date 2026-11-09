@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {filterLeads,leadMetrics,normalizeLead,safeLeads,validateLead} from "../docs/customers-model.mjs";
+import {filterLeads,leadMetrics,normalizeLead,safeLeads,upsertLead,validateLead} from "../docs/customers-model.mjs";
 
 const valid={reference:"REQ-204",service:"umrah",source:"website",stage:"inquiry",followUp:"2099-03-02",notes:"Synthetic test record"};
 
@@ -27,4 +27,29 @@ test("filters by reference, notes, service and stage",()=>{
   const leads=[normalizeLead(valid,"a"),normalizeLead({...valid,reference:"TOUR-1",service:"tourism",stage:"qualified",notes:"Damascus itinerary"},"b")];
   assert.deepEqual(filterLeads(leads,{query:"dam",service:"tourism",stage:"qualified"}).map(item=>item.id),["b"]);
   assert.equal(filterLeads(leads,{query:"missing"}).length,0);
+});
+
+test("edits preserve identity and order without mutating saved records",()=>{
+ const original=[normalizeLead(valid,"a"),normalizeLead({...valid,reference:"REQ-205"},"b")];
+ const result=upsertLead(original,{...valid,stage:"qualified",followUp:"2099-04-01"},"a");
+ assert.deepEqual(result.errors,[]);
+ assert.equal(result.items.length,2);
+ assert.equal(result.items[0].stage,"qualified");
+ assert.equal(result.items[0].followUp,"2099-04-01");
+ assert.equal(original[0].stage,"inquiry");
+ assert.strictEqual(result.items[1],original[1]);
+});
+test("rejects duplicate references on creation and edit, allows own reference",()=>{
+ const items=[normalizeLead(valid,"a"),normalizeLead({...valid,reference:"REQ-205"},"b")];
+ for(const id of ["new","b"]){
+  const result=upsertLead(items,{...valid,reference:" req-204 "},id);
+  assert.deepEqual(result.errors,["duplicateReference"]);assert.strictEqual(result.items,items);
+ }
+ assert.deepEqual(upsertLead(items,{...valid,reference:" req-204 "},"a").errors,[]);
+ assert.equal(upsertLead(items,{...valid,reference:"REQ-206"},"new").items.length,3);
+});
+test("invalid edits leave original records intact",()=>{
+ const items=[normalizeLead(valid,"a")];
+ const result=upsertLead(items,{...valid,followUp:"2099-02-30"},"a");
+ assert.deepEqual(result.errors,["followUp"]);assert.strictEqual(result.items,items);
 });

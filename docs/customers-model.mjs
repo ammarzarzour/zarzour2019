@@ -42,3 +42,11 @@ export function filterLeads(leads,{query="",service="",stage=""}={}){
   const needle=query.trim().toLocaleLowerCase();
   return leads.filter(item=>(!service||item.service===service)&&(!stage||item.stage===stage)&&(!needle||item.reference.toLocaleLowerCase().includes(needle)||item.notes.toLocaleLowerCase().includes(needle)));
 }
+
+export function upsertLead(leads,input,id){
+  const errors=validateLead(input);
+  if(errors.length)return {errors,items:leads};
+  const item=normalizeLead(input,id);
+  if(leads.some(existing=>existing.id!==id&&existing.reference.trim().toUpperCase()===item.reference.toUpperCase()))return {errors:["duplicateReference"],items:leads};
+  return {errors:[],items:leads.some(existing=>existing.id===id)?leads.map(existing=>existing.id===id?item:existing):[item,...leads]};
+}
