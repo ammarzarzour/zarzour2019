@@ -40,3 +40,15 @@ test("filters by type, status and reference", () => {
   assert.deepEqual(filterVisaCases(items, { query: "biz", type: "business", status: "draft" }).map(item => item.id), ["b"]);
 });
 
+
+test("rejects impossible calendar dates in both date fields", () => {
+  for (const date of ["2026-02-30", "2026-02-29", "2026-04-31", "2026-13-01"]) {
+    assert.deepEqual(validateVisaCase({ ...valid, targetDate: date }), ["targetDate"]);
+    assert.deepEqual(validateVisaCase({ ...valid, submittedDate: date }), ["submittedDate"]);
+  }
+});
+
+test("accepts leap days and excludes impossible stored deadlines", () => {
+  assert.deepEqual(validateVisaCase({ ...valid, targetDate: "2028-02-29" }), []);
+  assert.deepEqual(safeVisaCases([{ ...normalizeVisaCase(valid, "bad-date"), targetDate: "2026-02-30" }]), []);
+});
