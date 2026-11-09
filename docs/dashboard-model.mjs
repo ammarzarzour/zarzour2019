@@ -1,4 +1,4 @@
-export const dashboardModuleIds = ["operations", "customers", "campaigns", "groups", "contracts", "guarantees", "commissions", "partners", "directory"];
+export const dashboardModuleIds = ["operations", "visas", "customers", "campaigns", "groups", "contracts", "guarantees", "commissions", "partners", "directory"];
 
 function count(value) {
   const number = Number(value);

@@ -1,4 +1,5 @@
 import { calculateMetrics, safePrograms } from "./operations-model.mjs";
+import { visaMetrics, safeVisaCases } from "./visas-model.mjs";
 import { leadMetrics, safeLeads } from "./customers-model.mjs";
 import { campaignMetrics, safeCampaigns } from "./campaigns-model.mjs";
 import { groupMetrics, safeGroups } from "./pilgrim-groups-model.mjs";
@@ -12,6 +13,7 @@ import { summarizeModules } from "./dashboard-model.mjs";
 const today = new Date().toISOString().slice(0, 10);
 const definitions = [
   { id: "operations", key: "zarzour-operations-programs-v1", href: "operations.html", safe: safePrograms, metrics: items => { const m = calculateMetrics(items, today); return { total: m.programs, alerts: m.blocked, ready: m.ready }; } },
+  { id: "visas", key: "zarzour-visa-cases-v1", href: "visas.html", safe: safeVisaCases, metrics: items => { const m = visaMetrics(items, today); return { total: m.total, alerts: m.blocked + m.overdue + m.dueSoon, ready: m.ready }; } },
   { id: "customers", key: "zarzour-customer-pipeline-v1", href: "customers.html", safe: safeLeads, metrics: items => { const m = leadMetrics(items, today); return { total: m.total, alerts: m.overdue, ready: m.booked }; } },
   { id: "campaigns", key: "zarzour-campaigns-v1", href: "campaigns.html", safe: safeCampaigns, metrics: items => { const m = campaignMetrics(items, today); return { total: m.total, alerts: m.blocked + m.ending, ready: Math.max(0, m.active - m.blocked) }; } },
   { id: "groups", key: "zarzour-pilgrim-groups-v1", href: "pilgrim-groups.html", safe: safeGroups, metrics: items => { const m = groupMetrics(items, today); return { total: m.total, alerts: m.blocked + m.returnDue + m.returnMissing, ready: m.ready }; } },
@@ -23,8 +25,8 @@ const definitions = [
 ];
 
 const words = {
-  ar: { operations: "الرحلات", customers: "العملاء", campaigns: "الحملات", groups: "المعتمرون", contracts: "العقود", guarantees: "الكفلاء", commissions: "العمولات", partners: "الشركاء", directory: "الدليل الموثق", attention: "يحتاج متابعة", active: "نشط", empty: "لا توجد بيانات", total: "إجمالي السجلات", alerts: "تنبيهات", ready: "جاهز", open: "فتح الوحدة", unavailable: "تعذر قراءة البيانات المحلية لهذه الوحدة." },
-  en: { operations: "Trips", customers: "Customers", campaigns: "Campaigns", groups: "Pilgrims", contracts: "Contracts", guarantees: "Guarantees", commissions: "Commissions", partners: "Partners", directory: "Verified directory", attention: "Needs attention", active: "Active", empty: "No data", total: "Total records", alerts: "Alerts", ready: "Ready", open: "Open module", unavailable: "Local data for this module could not be read." }
+  ar: { operations: "الرحلات", visas: "التأشيرات", customers: "العملاء", campaigns: "الحملات", groups: "المعتمرون", contracts: "العقود", guarantees: "الكفلاء", commissions: "العمولات", partners: "الشركاء", directory: "الدليل الموثق", attention: "يحتاج متابعة", active: "نشط", empty: "لا توجد بيانات", total: "إجمالي السجلات", alerts: "تنبيهات", ready: "جاهز", open: "فتح الوحدة", unavailable: "تعذر قراءة البيانات المحلية لهذه الوحدة." },
+  en: { operations: "Trips", visas: "Visas", customers: "Customers", campaigns: "Campaigns", groups: "Pilgrims", contracts: "Contracts", guarantees: "Guarantees", commissions: "Commissions", partners: "Partners", directory: "Verified directory", attention: "Needs attention", active: "Active", empty: "No data", total: "Total records", alerts: "Alerts", ready: "Ready", open: "Open module", unavailable: "Local data for this module could not be read." }
 };
 let lang;
 try { lang = localStorage.getItem("zarzour-language"); } catch {}

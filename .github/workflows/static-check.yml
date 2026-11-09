@@ -57,6 +57,8 @@ jobs:
         run: node --test scripts/directory.test.mjs
       - name: Test unified Travel control center
         run: node --test scripts/dashboard.test.mjs
+      - name: Test visa case operations
+        run: node --test scripts/visas.test.mjs
 
       - name: Test bilingual interactions
         run: node scripts/test-interactions.mjs
