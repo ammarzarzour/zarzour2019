@@ -1,5 +1,5 @@
 import test from "node:test";import assert from "node:assert/strict";
-import {contractMetrics,contractReadiness,filterContracts,normalizeContract,safeContracts,validateContract} from "../docs/contracts-model.mjs";
+import {contractMetrics,contractReadiness,filterContracts,normalizeContract,safeContracts,validateContract,upsertContract} from "../docs/contracts-model.mjs";
 const valid={reference:"CTR-100",type:"pilgrim_group",scope:"umrah",status:"review",startDate:"2099-01-01",endDate:"2099-03-01",returnResponsibility:"on",guaranteeReady:"on",penaltyReviewed:"on",notes:"Synthetic contract record"};
 test("validates and normalizes a non-personal contract",()=>{assert.deepEqual(validateContract(valid),[]);assert.deepEqual(normalizeContract(valid,"c1"),{...valid,id:"c1",returnResponsibility:true,guaranteeReady:true,penaltyReviewed:true,notes:valid.notes})});
 test("rejects invalid dates, ranges and enums",()=>{assert.deepEqual(validateContract({...valid,reference:"",type:"other",scope:"payment",status:"signed",startDate:"2099-02-30",endDate:"2098-01-01",notes:"x".repeat(241)}),["reference","type","scope","status","startDate","notes"])});
@@ -22,4 +22,18 @@ test("separates expired contracts from today's and future expirations",()=>{
  const result=contractMetrics(items,"2099-01-10");
  assert.equal(result.expired,1);assert.equal(result.expiring,2);
  assert.equal(items[0].status,"active");
+});
+
+test("updates contract obligations without duplicating or mutating records",()=>{
+ const before=[normalizeContract(valid,"a")];
+ const result=upsertContract(before,{...valid,status:"active",notes:"Updated"},"a");
+ assert.deepEqual(result.errors,[]);assert.equal(result.items.length,1);
+ assert.equal(result.items[0].id,"a");assert.equal(result.items[0].status,"active");assert.equal(before[0].status,"review");
+});
+test("invalid edits and incomplete approvals retain the original records",()=>{
+ const before=[normalizeContract(valid,"a")];
+ for(const change of [{endDate:"2098-01-01"},{status:"active",guaranteeReady:false}]){
+ const result=upsertContract(before,{...valid,...change},"a");
+ assert.ok(result.errors.length);assert.equal(result.items,before);
+ }
 });
