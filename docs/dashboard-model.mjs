@@ -12,9 +12,10 @@ export function normalizeSnapshot(value) {
   const href = String(value.href || "");
   return {
     id: value.id,
+    ...(value.unavailable === true ? { unavailable: true } : {}),
     total: count(value.total),
-    alerts: count(value.alerts),
-    ready: count(value.ready),
+    alerts: value.unavailable === true ? Math.max(1, count(value.alerts)) : count(value.alerts),
+    ready: value.unavailable === true ? 0 : count(value.ready),
     href: /^(?:[a-z0-9-]+\/)*[a-z0-9-]+\.html$/i.test(href) ? href : "#"
   };
 }
