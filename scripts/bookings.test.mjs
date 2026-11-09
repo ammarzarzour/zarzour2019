@@ -50,3 +50,23 @@ test("rejects duplicate references case-insensitively without changing records",
  const before=[normalizeBooking(valid,"a")];const result=upsertBooking(before,{...valid,reference:" bk-201 "},"b");
  assert.deepEqual(result.errors,["duplicateReference"]);assert.equal(result.items,before);
 });
+
+test("rejects impossible dates and accepts actual leap days", () => {
+  for (const date of ["2026-02-30", "2026-02-29", "2026-04-31", "2026-13-01", "2026-00-10"]) {
+    assert.ok(validateBooking({ ...valid, startDate: date, endDate: date }).includes("startDate"));
+    assert.ok(validateBooking({ ...valid, startDate: "2026-01-01", endDate: date }).includes("endDate"));
+  }
+  assert.deepEqual(validateBooking({ ...valid, startDate: "2028-02-29", endDate: "2028-02-29" }), []);
+});
+test("invalid booking dates cannot be saved or updated", () => {
+  const before = [normalizeBooking(valid, "a")];
+  for (const id of ["a", "b"]) {
+    const result = upsertBooking(before, { ...valid, reference: "BK-NEW", endDate: "2026-11-31" }, id);
+    assert.ok(result.errors.includes("endDate"));
+    assert.equal(result.items, before);
+  }
+});
+test("stored bookings with impossible dates are excluded", () => {
+  const good = normalizeBooking(valid, "a");
+  assert.deepEqual(safeBookings([good, { ...good, id: "b", reference: "BK-BAD", endDate: "2026-11-31" }]), [good]);
+});
