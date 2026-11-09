@@ -30,7 +30,7 @@ export function safeContracts(value){
 export function contractMetrics(items,today){
  const live=items.filter(x=>["approved","active"].includes(x.status));
  const plus30=new Date(Date.parse(today+"T00:00:00Z")+30*86400000).toISOString().slice(0,10);
- return {total:items.length,review:items.filter(x=>x.status==="review").length,active:items.filter(x=>x.status==="active").length,blocked:live.filter(x=>contractReadiness(x).blockers.length>0).length,expiring:live.filter(x=>x.endDate&&x.endDate>=today&&x.endDate<=plus30).length,completed:items.filter(x=>x.status==="completed").length};
+ return {total:items.length,review:items.filter(x=>x.status==="review").length,active:items.filter(x=>x.status==="active").length,blocked:live.filter(x=>contractReadiness(x).blockers.length>0).length,expired:live.filter(x=>x.endDate&&x.endDate<today).length,expiring:live.filter(x=>x.endDate&&x.endDate>=today&&x.endDate<=plus30).length,completed:items.filter(x=>x.status==="completed").length};
 }
 export function filterContracts(items,{query="",type="",status=""}={}){
  const needle=query.trim().toLocaleLowerCase();return items.filter(x=>(!type||x.type===type)&&(!status||x.status===status)&&(!needle||x.reference.toLocaleLowerCase().includes(needle)||x.notes.toLocaleLowerCase().includes(needle)));
