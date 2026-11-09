@@ -10,7 +10,7 @@ import { journalMetrics, safeJournalEntries } from "./accounting-model.mjs";
 import { commissionMetrics, safeCommissions } from "./commissions-model.mjs";
 import { partnerMetrics, safePartners } from "./partners-model.mjs";
 import { directoryMetrics, safeDirectory } from "./directory-model.mjs";
-import { summarizeModules, contractSnapshot } from "./dashboard-model.mjs";
+import { summarizeModules, contractSnapshot, readDashboardModule } from "./dashboard-model.mjs";
 
 const today = new Date().toISOString().slice(0, 10);
 const definitions = [
@@ -37,12 +37,7 @@ try { lang = localStorage.getItem("zarzour-language"); } catch {}
 if (!["ar", "en"].includes(lang)) lang = (navigator.language || "ar").toLowerCase().startsWith("en") ? "en" : "ar";
 
 function read(definition) {
-  try {
-    const items = definition.safe(JSON.parse(localStorage.getItem(definition.key) || "[]"));
-    return { id: definition.id, href: definition.href, ...definition.metrics(items) };
-  } catch {
-    return { id: definition.id, href: definition.href, total: 0, alerts: 1, ready: 0, unavailable: true };
-  }
+  return readDashboardModule(definition, { getItem: key => localStorage.getItem(key) });
 }
 
 function render() {
