@@ -1,5 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+
+test("preserves storage failures through summary and forces attention", () => {
+ const result = summarizeModules([{id:"contracts",href:"contracts.html",total:0,alerts:0,ready:9,unavailable:true}]);
+ assert.equal(result.modules[0].unavailable,true);
+ assert.equal(result.modules[0].health,"attention");
+ assert.equal(result.totals.alerts,1);
+ assert.equal(result.totals.ready,0);
+});
+test("does not treat string failure flags as storage errors", () => {
+ const result=normalizeSnapshot({id:"contracts",href:"contracts.html",total:1,alerts:0,ready:1,unavailable:"false"});
+ assert.equal(Object.hasOwn(result,"unavailable"),false);
+ assert.equal(result.ready,1);
+});
 import { moduleHealth, normalizeSnapshot, summarizeModules, contractSnapshot } from "../docs/dashboard-model.mjs";
 
 test("normalizes positive integer counters and rejects unsafe links", () => {
