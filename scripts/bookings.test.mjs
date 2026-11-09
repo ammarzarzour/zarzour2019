@@ -1,0 +1,43 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { bookingMetrics, bookingReadiness, filterBookings, normalizeBooking, safeBookings, validateBooking } from "../docs/bookings-model.mjs";
+
+const valid = { reference: "BK-201", service: "flight", status: "confirmed", travelers: 4, startDate: "2026-11-12", endDate: "2026-11-12", supplierReference: "SUP-88", supplierConfirmed: true, documentsChecked: true, itineraryIssued: true, notes: "Synthetic test" };
+
+test("validates operational booking fields", () => {
+  assert.deepEqual(validateBooking(valid), []);
+  assert.deepEqual(validateBooking({ ...valid, reference: "!", service: "other", travelers: 0 }), ["reference", "service", "travelers"]);
+});
+
+test("rejects an end date before the start", () => assert.deepEqual(validateBooking({ ...valid, endDate: "2026-11-11" }), ["endDate"]));
+
+test("normalizes references, numbers and checkboxes", () => {
+  const item = normalizeBooking({ ...valid, reference: " bk-201 ", travelers: "4", supplierConfirmed: "on" }, "one");
+  assert.equal(item.reference, "BK-201"); assert.equal(item.travelers, 4); assert.equal(item.supplierConfirmed, true);
+});
+
+test("requires supplier confirmation and issued documents for confirmed bookings", () => {
+  const item = normalizeBooking({ ...valid, supplierReference: "", documentsChecked: false });
+  assert.deepEqual(bookingReadiness(item).blockers, ["supplierReference", "documentsChecked"]);
+});
+
+test("sanitizes duplicate and malformed stored bookings", () => {
+  const first = normalizeBooking(valid, "one");
+  assert.deepEqual(safeBookings([first, { ...first, id: "two" }, { id: "bad" }]).map(item => item.id), ["one"]);
+});
+
+test("calculates service, alert and traveler metrics", () => {
+  const items = [
+    normalizeBooking(valid, "a"),
+    normalizeBooking({ ...valid, reference: "BK-202", status: "hold", supplierConfirmed: false, startDate: "2026-11-20", endDate: "2026-11-21", travelers: 2 }, "b"),
+    normalizeBooking({ ...valid, reference: "BK-203", status: "in_service", startDate: "2026-11-01", endDate: "2026-11-08", travelers: 3 }, "c"),
+    normalizeBooking({ ...valid, reference: "BK-204", status: "cancelled", travelers: 9 }, "d")
+  ];
+  assert.deepEqual(bookingMetrics(items, "2026-11-09"), { total: 4, travelers: 9, hold: 1, confirmed: 1, inService: 1, blocked: 1, startingSoon: 1, overdue: 1, completed: 0 });
+});
+
+test("filters by service, status and supplier reference", () => {
+  const items = [normalizeBooking(valid, "a"), normalizeBooking({ ...valid, reference: "HT-7", service: "hotel", status: "hold", supplierReference: "HOTEL-4" }, "b")];
+  assert.deepEqual(filterBookings(items, { query: "hotel-4", service: "hotel", status: "hold" }).map(item => item.id), ["b"]);
+});
+

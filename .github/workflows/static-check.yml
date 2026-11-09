@@ -59,6 +59,8 @@ jobs:
         run: node --test scripts/dashboard.test.mjs
       - name: Test visa case operations
         run: node --test scripts/visas.test.mjs
+      - name: Test booking operations
+        run: node --test scripts/bookings.test.mjs
 
       - name: Test bilingual interactions
         run: node scripts/test-interactions.mjs
