@@ -37,3 +37,12 @@ test("invalid edits and incomplete approvals retain the original records",()=>{
  assert.ok(result.errors.length);assert.equal(result.items,before);
  }
 });
+
+test("rejects duplicate contract references on creation and editing",()=>{
+ const before=[normalizeContract(valid,"a"),normalizeContract({...valid,reference:"CTR-200"},"b")];
+ for(const id of ["new","b"]){
+ const result=upsertContract(before,{...valid,reference:" ctr-100 "},id);
+ assert.deepEqual(result.errors,["duplicateReference"]);assert.equal(result.items,before);
+ }
+ assert.deepEqual(upsertContract(before,{...valid,reference:" ctr-100 "},"a").errors,[]);
+});
