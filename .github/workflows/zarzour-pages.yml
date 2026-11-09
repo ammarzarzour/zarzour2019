@@ -48,6 +48,8 @@ jobs:
         run: node --test scripts/commissions.test.mjs
       - name: Test independent Zarzour Soft delivery board
         run: node --test scripts/soft-projects.test.mjs
+      - name: Test guarantee operations register
+        run: node --test scripts/guarantees.test.mjs
       - name: Test bilingual interactions
         run: node scripts/test-interactions.mjs
       - uses: actions/configure-pages@v5
