@@ -13,7 +13,7 @@ test("does not treat string failure flags as storage errors", () => {
  assert.equal(Object.hasOwn(result,"unavailable"),false);
  assert.equal(result.ready,1);
 });
-import { moduleHealth, normalizeSnapshot, summarizeModules, contractSnapshot } from "../docs/dashboard-model.mjs";
+import { moduleHealth, normalizeSnapshot, summarizeModules, contractSnapshot, readDashboardModule } from "../docs/dashboard-model.mjs";
 
 test("normalizes positive integer counters and rejects unsafe links", () => {
   assert.deepEqual(normalizeSnapshot({ id: "customers", total: "4.9", alerts: -3, ready: 2, href: "https://bad.example/" }), { id: "customers", total: 4, alerts: 0, ready: 2, href: "#" });
@@ -47,4 +47,23 @@ test("contract dashboard counts overlapping alerts once and excludes expired rea
 test("contract alert window includes day thirty and excludes later dates",()=>{
  const base={type:"partner",status:"active",penaltyReviewed:true};
  assert.deepEqual(contractSnapshot([{...base,endDate:"2026-12-09"},{...base,endDate:"2026-12-10"}],"2026-11-09"),{total:2,alerts:1,ready:2});
+});
+
+const definition={id:"contracts",key:"test-records",href:"contracts.html",safe:items=>items,metrics:items=>({total:items.length,alerts:0,ready:items.length})};
+test("missing storage is empty while malformed storage requires attention",()=>{
+ assert.equal(readDashboardModule(definition,{getItem:()=>null}).total,0);
+ for(const raw of ["", "{", "null", "{}", "42", '"text"']){
+  const result=readDashboardModule(definition,{getItem:()=>raw});
+  assert.equal(result.unavailable,true);
+  assert.equal(result.alerts,1);
+  assert.equal(result.ready,0);
+ }
+});
+test("storage access failures are isolated from healthy modules",()=>{
+ const failed=readDashboardModule(definition,{getItem:()=>{throw Error("blocked")}});
+ const healthy=readDashboardModule({...definition,id:"customers",href:"customers.html"},{getItem:()=>'[{"id":"synthetic"}]'});
+ const summary=summarizeModules([failed,healthy]);
+ assert.equal(summary.totals.records,1);
+ assert.equal(summary.totals.alerts,1);
+ assert.equal(summary.modules.find(item=>item.id==="customers").health,"active");
 });
