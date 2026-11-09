@@ -22,3 +22,12 @@ export function safeCampaigns(value){if(!Array.isArray(value))return [];const se
 export function campaignMetrics(items,today){const active=items.filter(x=>x.status==="active"),inquiries=items.reduce((n,x)=>n+x.inquiries,0),qualified=items.reduce((n,x)=>n+x.qualified,0);return {total:items.length,planned:items.filter(x=>x.status==="planned").length,active:active.length,blocked:active.filter(x=>campaignReadiness(x).blockers.length).length,completed:items.filter(x=>x.status==="completed").length,inquiries,conversion:inquiries?Math.round(qualified/inquiries*100):0,ending:active.filter(x=>x.endDate>=today&&x.endDate<=todayPlus(today,7)).length}}
 const todayPlus=(today,days)=>new Date(Date.parse(today+"T00:00:00Z")+days*86400000).toISOString().slice(0,10);
 export function filterCampaigns(items,{query="",service="",status=""}={}){const needle=query.trim().toLocaleLowerCase();return items.filter(x=>(!service||x.service===service)&&(!status||x.status===status)&&(!needle||x.reference.toLocaleLowerCase().includes(needle)||x.notes.toLocaleLowerCase().includes(needle)))}
+
+export function upsertCampaign(items,input,id){
+ const errors=validateCampaign(input);
+ if(errors.length)return {errors,items};
+ const item=normalizeCampaign(input,id);
+ if(items.some(existing=>existing.id!==id&&existing.reference.trim().toUpperCase()===item.reference.toUpperCase()))return {errors:["duplicateReference"],items};
+ if(item.status==="active"&&campaignReadiness(item).blockers.length)return {errors:["readiness"],items};
+ return {errors:[],items:items.some(existing=>existing.id===id)?items.map(existing=>existing.id===id?item:existing):[item,...items]};
+}
