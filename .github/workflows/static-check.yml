@@ -63,6 +63,8 @@ jobs:
         run: node --test scripts/bookings.test.mjs
       - name: Test accounting journal
         run: node --test scripts/accounting.test.mjs
+      - name: Test secure operations schema
+        run: node --test scripts/secure-schema.test.mjs
 
       - name: Test bilingual interactions
         run: node scripts/test-interactions.mjs
