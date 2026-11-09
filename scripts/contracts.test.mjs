@@ -60,3 +60,16 @@ test("follow-up filters locate expired, expiring and blocked live contracts",()=
  assert.equal(filterContracts(items,{attention:"expired",today:"2099-01-10",status:"approved"}).length,0);
  assert.equal(filterContracts(items).length,4);
 });
+
+test("stale edits cannot overwrite a changed or deleted contract",()=>{
+ const original=normalizeContract(valid,"a");
+ const changed={...original,status:"draft"};
+ for(const items of [[changed],[]]){
+ const result=upsertContract(items,{...valid,notes:"Stale edit"},"a",original);
+ assert.deepEqual(result.errors,["conflict"]);assert.strictEqual(result.items,items);
+ }
+ const items=[original,normalizeContract({...valid,reference:"CTR-200"},"b")];
+ const result=upsertContract(items,{...valid,notes:"Safe edit"},"a",{...original});
+ assert.deepEqual(result.errors,[]);assert.equal(result.items[0].notes,"Safe edit");
+ assert.equal(original.notes,valid.notes);
+});

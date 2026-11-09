@@ -36,7 +36,8 @@ export function filterContracts(items,{query="",type="",status="",attention="",t
  const needle=query.trim().toLocaleLowerCase();return items.filter(x=>(!attention||contractAttention(x,today).includes(attention))&&(!type||x.type===type)&&(!status||x.status===status)&&(!needle||x.reference.toLocaleLowerCase().includes(needle)||x.notes.toLocaleLowerCase().includes(needle)));
 }
 
-export function upsertContract(items,input,id) {
+export function upsertContract(items,input,id,expected) {
+ if(expected!==undefined){const current=items.find(item=>item.id===id);if(!current||JSON.stringify(normalizeContract(current,id))!==JSON.stringify(normalizeContract(expected,id)))return {errors:["conflict"],items};}
  const errors=validateContract(input);
  if(errors.length) return {errors,items};
  const item=normalizeContract(input,id);
