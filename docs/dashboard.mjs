@@ -4,13 +4,13 @@ import { visaMetrics, safeVisaCases } from "./visas-model.mjs";
 import { leadMetrics, safeLeads } from "./customers-model.mjs";
 import { campaignMetrics, safeCampaigns } from "./campaigns-model.mjs";
 import { groupMetrics, safeGroups } from "./pilgrim-groups-model.mjs";
-import { contractMetrics, safeContracts } from "./contracts-model.mjs";
+import { safeContracts } from "./contracts-model.mjs";
 import { guaranteeMetrics, safeGuarantees } from "./guarantees-model.mjs";
 import { journalMetrics, safeJournalEntries } from "./accounting-model.mjs";
 import { commissionMetrics, safeCommissions } from "./commissions-model.mjs";
 import { partnerMetrics, safePartners } from "./partners-model.mjs";
 import { directoryMetrics, safeDirectory } from "./directory-model.mjs";
-import { summarizeModules } from "./dashboard-model.mjs";
+import { summarizeModules, contractSnapshot } from "./dashboard-model.mjs";
 
 const today = new Date().toISOString().slice(0, 10);
 const definitions = [
@@ -20,7 +20,7 @@ const definitions = [
   { id: "customers", key: "zarzour-customer-pipeline-v1", href: "customers.html", safe: safeLeads, metrics: items => { const m = leadMetrics(items, today); return { total: m.total, alerts: m.overdue, ready: m.booked }; } },
   { id: "campaigns", key: "zarzour-campaigns-v1", href: "campaigns.html", safe: safeCampaigns, metrics: items => { const m = campaignMetrics(items, today); return { total: m.total, alerts: m.blocked + m.ending, ready: Math.max(0, m.active - m.blocked) }; } },
   { id: "groups", key: "zarzour-pilgrim-groups-v1", href: "pilgrim-groups.html", safe: safeGroups, metrics: items => { const m = groupMetrics(items, today); return { total: m.total, alerts: m.blocked + m.returnDue + m.returnMissing, ready: m.ready }; } },
-  { id: "contracts", key: "zarzour-contracts-v1", href: "contracts.html", safe: safeContracts, metrics: items => { const m = contractMetrics(items, today); return { total: m.total, alerts: m.blocked + m.expiring, ready: Math.max(0, m.active - m.blocked) }; } },
+  { id: "contracts", key: "zarzour-contracts-v1", href: "contracts.html", safe: safeContracts, metrics: items => contractSnapshot(items, today) },
   { id: "guarantees", key: "zarzour-guarantees-v1", href: "guarantees.html", safe: safeGuarantees, metrics: items => { const m = guaranteeMetrics(items, today); return { total: m.total, alerts: m.blocked + m.expiredOpen + m.releasePending, ready: Math.max(0, m.active - m.blocked) }; } },
   { id: "accounting", key: "zarzour-accounting-journal-v1", href: "accounting.html", safe: safeJournalEntries, metrics: items => { const m = journalMetrics(items); return { total: m.total, alerts: m.review + m.blocked, ready: m.posted }; } },
   { id: "commissions", key: "zarzour-commissions-v1", href: "commissions.html", safe: safeCommissions, metrics: items => { const m = commissionMetrics(items); return { total: m.total, alerts: m.blocked, ready: Math.max(0, m.approved - m.blocked) }; } },
