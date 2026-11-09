@@ -40,6 +40,7 @@ export function upsertContract(items,input,id) {
  const errors=validateContract(input);
  if(errors.length) return {errors,items};
  const item=normalizeContract(input,id);
+ if(items.some(existing=>existing.id!==id&&existing.reference.trim().toUpperCase()===item.reference.toUpperCase())) return {errors:["duplicateReference"],items};
  if(["approved","active"].includes(item.status)&&contractReadiness(item).blockers.length) return {errors:["obligations"],items};
  return {errors:[],items:items.some(existing=>existing.id===id)?items.map(existing=>existing.id===id?item:existing):[item,...items]};
 }
