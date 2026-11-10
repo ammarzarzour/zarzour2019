@@ -1,5 +1,5 @@
 import test from "node:test";import assert from "node:assert/strict";
-import {contractAttention,contractMetrics,contractReadiness,filterContracts,normalizeContract,safeContracts,validateContract,upsertContract} from "../docs/contracts-model.mjs";
+import {changeContract,contractAttention,contractMetrics,contractReadiness,filterContracts,normalizeContract,safeContracts,validateContract,upsertContract} from "../docs/contracts-model.mjs";
 const valid={reference:"CTR-100",type:"pilgrim_group",scope:"umrah",status:"review",startDate:"2099-01-01",endDate:"2099-03-01",returnResponsibility:"on",guaranteeReady:"on",penaltyReviewed:"on",notes:"Synthetic contract record"};
 test("validates and normalizes a non-personal contract",()=>{assert.deepEqual(validateContract(valid),[]);assert.deepEqual(normalizeContract(valid,"c1"),{...valid,id:"c1",returnResponsibility:true,guaranteeReady:true,penaltyReviewed:true,notes:valid.notes})});
 test("rejects invalid dates, ranges and enums",()=>{assert.deepEqual(validateContract({...valid,reference:"",type:"other",scope:"payment",status:"signed",startDate:"2099-02-30",endDate:"2098-01-01",notes:"x".repeat(241)}),["reference","type","scope","status","startDate","notes"])});
@@ -72,4 +72,20 @@ test("stale edits cannot overwrite a changed or deleted contract",()=>{
  const result=upsertContract(items,{...valid,notes:"Safe edit"},"a",{...original});
  assert.deepEqual(result.errors,[]);assert.equal(result.items[0].notes,"Safe edit");
  assert.equal(original.notes,valid.notes);
+});
+
+test("row status changes and deletions preserve concurrent changes",()=>{
+ const a=normalizeContract(valid,"a"),b=normalizeContract({...valid,reference:"CTR-200"},"b");
+ const latest=[a,{...b,notes:"Changed elsewhere"}];
+ const status=changeContract(latest,"a",a,"draft");
+ assert.deepEqual(status.errors,[]);assert.equal(status.items[0].status,"draft");
+ assert.strictEqual(status.items[1],latest[1]);
+ assert.deepEqual(changeContract(latest,"a",a,null).items,[latest[1]]);
+ for(const action of ["draft",null]){
+ const result=changeContract([{...a,notes:"Newer"}],"a",a,action);
+ assert.deepEqual(result.errors,["conflict"]);
+ assert.deepEqual(changeContract([],"a",a,action).errors,["conflict"]);
+ }
+ const incomplete={...a,guaranteeReady:false};
+ assert.deepEqual(changeContract([incomplete],"a",incomplete,"active").errors,["obligations"]);
 });

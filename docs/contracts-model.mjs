@@ -55,3 +55,10 @@ export function contractAttention(item,today){
  if(item.endDate&&item.endDate>=today&&item.endDate<=limit)alerts.push("expiring");
  return alerts;
 }
+
+export function changeContract(items,id,expected,status){
+ const current=items.find(item=>item.id===id);
+ if(!current||JSON.stringify(normalizeContract(current,id))!==JSON.stringify(normalizeContract(expected,id)))return {errors:["conflict"],items};
+ if(status===null)return {errors:[],items:items.filter(item=>item.id!==id)};
+ return upsertContract(items,{...current,status},id,expected);
+}

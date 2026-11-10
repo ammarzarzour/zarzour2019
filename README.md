@@ -7,12 +7,12 @@ Bilingual (Arabic/English) public preview for **Zarzour Travel, Tourism, Hajj & 
 - Responsive landing page with Arabic RTL and English LTR language toggle.
 - Travel, visas, Hajj and Umrah, Syrian tourism, partnership and operations sections.
 - Separate Zarzour Soft product presentation at `docs/soft/`.
-- No bookings or payments are enabled.
+- Local demo registers cover bookings, visas, customers, campaigns, pilgrim groups, contracts, guarantees, partners, directory, commissions and accounting. No real booking submission or payments are enabled.
 - Admin portal and database access remain closed while authentication and access policies are being prepared.
 
 ## GitHub Pages
 
-The deployment workflow uses the `docs/` directory and deploys on pushes to `master`. GitHub Pages is not active yet: the first run cannot create the Pages site because the Actions token lacks permission for that setup step. Enable Pages once in the repository settings, then rerun the workflow and verify the published URL.
+The deployment workflow publishes `docs/` on pushes to `master`, after validation and module tests pass. GitHub Pages is active at the current project URL below.
 
 Current project page URL (before repository rename):  
 https://ammarzarzour.github.io/zarzour2019/
@@ -45,8 +45,7 @@ node --check docs/request.mjs
 ```
 
 Both validation and Pages workflows run trip-planning tests. The Pages job validates
-before uploading. Initial Pages setup and repository rename require repository
-administration capabilities not exposed by the connected GitHub tools.
+before uploading. Repository rename remains pending. Keep the current URL until redirects and deployment paths are verified.
 
 ## Independent Soft deployment
 

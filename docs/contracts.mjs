@@ -1,4 +1,4 @@
-import {contractMetrics,contractReadiness,filterContracts,normalizeContract,safeContracts,statuses,validateContract,upsertContract} from "./contracts-model.mjs";
+import {contractMetrics,contractReadiness,filterContracts,normalizeContract,safeContracts,statuses,validateContract,upsertContract,changeContract} from "./contracts-model.mjs";
 const key="zarzour-contracts-v1",languageKey="zarzour-language",today=new Date().toISOString().slice(0,10),form=document.getElementById("contract-form"),rows=document.getElementById("rows"),message=document.getElementById("message"),empty=document.getElementById("empty");let lang="ar",items=[],editingId=null,editingSnapshot=null;
 try{lang=localStorage.getItem(languageKey)==="en"?"en":"ar";const saved=localStorage.getItem(key);items=saved?safeContracts(JSON.parse(saved)):[]}catch{items=[]}
 const words={pilgrim_group:["مجموعة","Pilgrim group"],partner:["شريك","Partner"],agency:["وكالة","Agency"],supplier:["مورد","Supplier"],guarantor:["كفيل","Guarantor"],travel:["السفر","Travel"],tourism:["السياحة","Tourism"],visa:["التأشيرات","Visa"],hajj:["الحج","Hajj"],umrah:["العمرة","Umrah"],multi_service:["متعدد","Multi-service"],draft:["مسودة","Draft"],review:["مراجعة","Review"],approved:["معتمد","Approved"],active:["ساري","Active"],completed:["مكتمل","Completed"],cancelled:["ملغى","Cancelled"]},t=k=>words[k]?.[lang==="ar"?0:1]||k;
@@ -22,4 +22,15 @@ document.getElementById("cancel-edit").addEventListener("click",()=>{
  editingId=null;form.reset();document.getElementById("cancel-edit").hidden=true;message.hidden=true;
  form.querySelectorAll("[aria-invalid]").forEach(n=>n.removeAttribute("aria-invalid"));
 });
-rows.addEventListener("change",e=>{const id=e.target.dataset.statusId;if(!id||!statuses.includes(e.target.value))return;const item=items.find(x=>x.id===id);if(["approved","active"].includes(e.target.value)&&contractReadiness(item).blockers.length){show(lang==="ar"?"الحالة محظورة حتى اكتمال الالتزامات.":"Status blocked until obligations are complete.",true);render();return}items=items.map(x=>x.id===id?{...x,status:e.target.value}:x);save();render()});rows.addEventListener("click",e=>{const id=e.target.dataset.deleteId;if(!id)return;if(editingId===id){editingId=null;form.reset();document.getElementById("cancel-edit").hidden=true;}items=items.filter(x=>x.id!==id);save();render()});for(const id of ["search","filter-type","filter-status","filter-attention"])document.getElementById(id).addEventListener(id==="search"?"input":"change",render);document.getElementById("language").addEventListener("click",()=>{lang=lang==="ar"?"en":"ar";try{localStorage.setItem(languageKey,lang)}catch{}applyLanguage()});applyLanguage();
+function applyRowChange(id,status){
+ const expected=items.find(item=>item.id===id);if(!expected)return;
+ let latest;try{const stored=localStorage.getItem(key);latest=stored===null?[]:safeContracts(JSON.parse(stored))}catch{show(lang==="ar"?"تعذر قراءة السجل؛ لم يتم حفظ التغيير.":"Unable to read the register; change was not saved.",true);render();return}
+ const result=changeContract(latest,id,expected,status);
+ if(result.errors.length){items=latest;show(result.errors.includes("conflict")?(lang==="ar"?"تغيّر العقد في نافذة أخرى. راجع أحدث نسخة ثم أعد المحاولة.":"Contract changed in another window. Review the latest version and try again."):(lang==="ar"?"الحالة محظورة حتى اكتمال الالتزامات.":"Status blocked until obligations are complete."),true);render();return}
+ items=result.items;
+ if(status===null&&editingId===id){editingId=null;editingSnapshot=null;form.reset();document.getElementById("cancel-edit").hidden=true}
+ save();render();
+}
+rows.addEventListener("change",e=>{const id=e.target.dataset.statusId;if(id&&statuses.includes(e.target.value))applyRowChange(id,e.target.value)});
+rows.addEventListener("click",e=>{const id=e.target.dataset.deleteId;if(id)applyRowChange(id,null)});
+for(const id of ["search","filter-type","filter-status","filter-attention"])document.getElementById(id).addEventListener(id==="search"?"input":"change",render);document.getElementById("language").addEventListener("click",()=>{lang=lang==="ar"?"en":"ar";try{localStorage.setItem(languageKey,lang)}catch{}applyLanguage()});applyLanguage();
