@@ -29,8 +29,8 @@ const definitions = [
 ];
 
 const words = {
-  ar: { operations: "الرحلات", bookings: "الحجوزات", visas: "التأشيرات", customers: "العملاء", campaigns: "الحملات", groups: "المعتمرون", contracts: "العقود", guarantees: "الكفلاء", accounting: "المحاسبة", commissions: "العمولات", partners: "الشركاء", directory: "الدليل الموثق", attention: "يحتاج متابعة", active: "نشط", empty: "لا توجد بيانات", total: "إجمالي السجلات", alerts: "تنبيهات", ready: "جاهز", open: "فتح الوحدة", unavailable: "تعذر قراءة البيانات المحلية لهذه الوحدة." },
-  en: { operations: "Trips", bookings: "Bookings", visas: "Visas", customers: "Customers", campaigns: "Campaigns", groups: "Pilgrims", contracts: "Contracts", guarantees: "Guarantees", accounting: "Accounting", commissions: "Commissions", partners: "Partners", directory: "Verified directory", attention: "Needs attention", active: "Active", empty: "No data", total: "Total records", alerts: "Alerts", ready: "Ready", open: "Open module", unavailable: "Local data for this module could not be read." }
+  ar: { operations: "الرحلات", bookings: "الحجوزات", visas: "التأشيرات", customers: "العملاء", campaigns: "الحملات", groups: "المعتمرون", contracts: "العقود", guarantees: "الكفلاء", accounting: "المحاسبة", commissions: "العمولات", partners: "الشركاء", directory: "الدليل الموثق", attention: "يحتاج متابعة", active: "نشط", empty: "لا توجد بيانات", total: "إجمالي السجلات", alerts: "تنبيهات", ready: "جاهز", open: "فتح الوحدة", discarded: "توجد سجلات محلية غير صالحة أو مكررة لم تدخل في الإحصاءات؛ راجع الوحدة. العدد: ", unavailable: "تعذر قراءة البيانات المحلية لهذه الوحدة." },
+  en: { operations: "Trips", bookings: "Bookings", visas: "Visas", customers: "Customers", campaigns: "Campaigns", groups: "Pilgrims", contracts: "Contracts", guarantees: "Guarantees", accounting: "Accounting", commissions: "Commissions", partners: "Partners", directory: "Verified directory", attention: "Needs attention", active: "Active", empty: "No data", total: "Total records", alerts: "Alerts", ready: "Ready", open: "Open module", discarded: "Invalid or duplicate local records were excluded; review the module. Count: ", unavailable: "Local data for this module could not be read." }
 };
 let lang;
 try { lang = localStorage.getItem("zarzour-language"); } catch {}
@@ -65,6 +65,7 @@ function render() {
     const link = document.createElement("a"); link.className = "open"; link.href = item.href; link.textContent = t.open;
     card.append(badge, heading, stats);
     if (item.unavailable) { const message = document.createElement("p"); message.className = "error"; message.textContent = t.unavailable; card.append(message); }
+    if(item.discarded){const message=document.createElement("p");message.className="error";message.textContent=t.discarded+item.discarded;card.append(message);}
     card.append(link); board.append(card);
   }
 }

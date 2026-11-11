@@ -67,3 +67,19 @@ test("storage access failures are isolated from healthy modules",()=>{
  assert.equal(summary.totals.alerts,1);
  assert.equal(summary.modules.find(item=>item.id==="customers").health,"active");
 });
+
+test("partially invalid storage is visible and cannot claim complete readiness",()=>{
+ const def={...definition,safe:items=>items.filter(x=>x&&x.valid===true)};
+ const result=readDashboardModule(def,{getItem:()=>'[{"valid":true},null,{"valid":false}]'});
+ assert.equal(result.total,1);assert.equal(result.discarded,2);assert.equal(result.alerts,1);assert.equal(result.ready,0);
+ const summary=summarizeModules([result]);assert.equal(summary.modules[0].discarded,2);
+ assert.equal(summary.modules[0].health,"attention");assert.equal(summary.totals.ready,0);
+ assert.equal(Object.hasOwn(result,"unavailable"),false);
+ const healthy=readDashboardModule(def,{getItem:()=>'[{"valid":true}]'});
+ assert.equal(Object.hasOwn(healthy,"discarded"),false);assert.equal(healthy.ready,1);
+});
+test("discarded record warning adds to operational alerts",()=>{
+ const def={...definition,safe:()=>[],metrics:()=>({total:0,alerts:3,ready:2})};
+ const result=readDashboardModule(def,{getItem:()=>'[null]'});
+ assert.equal(result.alerts,4);assert.equal(result.ready,0);
+});

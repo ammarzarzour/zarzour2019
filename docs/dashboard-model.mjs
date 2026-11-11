@@ -13,9 +13,10 @@ export function normalizeSnapshot(value) {
   return {
     id: value.id,
     ...(value.unavailable === true ? { unavailable: true } : {}),
+    ...(count(value.discarded)>0 ? {discarded:count(value.discarded)} : {}),
     total: count(value.total),
-    alerts: value.unavailable === true ? Math.max(1, count(value.alerts)) : count(value.alerts),
-    ready: value.unavailable === true ? 0 : count(value.ready),
+    alerts: value.unavailable === true || count(value.discarded)>0 ? Math.max(1, count(value.alerts)) : count(value.alerts),
+    ready: value.unavailable === true || count(value.discarded)>0 ? 0 : count(value.ready),
     href: /^(?:[a-z0-9-]+\/)*[a-z0-9-]+\.html$/i.test(href) ? href : "#"
   };
 }
@@ -63,7 +64,8 @@ export function readDashboardModule(definition, storage) {
   const parsed = raw === null ? [] : JSON.parse(raw);
   if (!Array.isArray(parsed)) throw new TypeError("Stored records must be an array");
   const items = definition.safe(parsed);
-  return {id:definition.id,href:definition.href,...definition.metrics(items)};
+  const metrics=definition.metrics(items),discarded=parsed.length-items.length;
+  return {id:definition.id,href:definition.href,...metrics,...(discarded>0?{discarded,alerts:count(metrics.alerts)+1,ready:0}:{})};
  } catch {
   return {id:definition.id,href:definition.href,total:0,alerts:1,ready:0,unavailable:true};
  }
