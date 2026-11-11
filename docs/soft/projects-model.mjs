@@ -8,7 +8,8 @@ const plus=(today,days)=>new Date(Date.parse(today+"T00:00:00Z")+days*86400000).
 export function projectMetrics(items,today){const open=items.filter(x=>x.status!=="completed"),taskTotal=items.reduce((n,x)=>n+x.tasksTotal,0),taskDone=items.reduce((n,x)=>n+x.tasksDone,0);return {total:items.length,active:items.filter(x=>x.status==="active").length,blocked:items.filter(x=>x.status==="blocked").length,overdue:open.filter(x=>x.targetDate<today).length,dueSoon:open.filter(x=>x.targetDate>=today&&x.targetDate<=plus(today,7)).length,releaseReady:items.filter(x=>["release","maintenance"].includes(x.stage)&&!deliveryReadiness(x).blockers.length).length,progress:taskTotal?Math.round(taskDone/taskTotal*100):0}}
 export function filterProjects(items,{query="",type="",status=""}={}){const needle=query.trim().toLocaleLowerCase();return items.filter(x=>(!type||x.type===type)&&(!status||x.status===status)&&(!needle||x.reference.toLocaleLowerCase().includes(needle)||x.notes.toLocaleLowerCase().includes(needle)))}
 
-export function upsertProject(items,input,id){
+export function upsertProject(items,input,id,expected){
+ if(expected!==undefined){const current=items.find(x=>x.id===id);if(!current||JSON.stringify(normalizeProject(current,id))!==JSON.stringify(normalizeProject(expected,id)))return {errors:["conflict"],items:items};}
  const errors=validateProject(input);if(errors.length)return {errors,items};
  const item=normalizeProject(input,id);
  if(items.some(x=>x.id!==id&&x.reference.trim().toUpperCase()===item.reference.toUpperCase()))return {errors:["duplicateReference"],items};

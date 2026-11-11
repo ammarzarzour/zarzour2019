@@ -43,7 +43,8 @@ export function filterLeads(leads,{query="",service="",stage="",followUp="",toda
   return leads.filter(item=>(!followUp||leadFollowUp(item,today)===followUp)&&(!service||item.service===service)&&(!stage||item.stage===stage)&&(!needle||item.reference.toLocaleLowerCase().includes(needle)||item.notes.toLocaleLowerCase().includes(needle)));
 }
 
-export function upsertLead(leads,input,id){
+export function upsertLead(leads,input,id,expected){
+ if(expected!==undefined){const current=leads.find(x=>x.id===id);if(!current||JSON.stringify(normalizeLead(current,id))!==JSON.stringify(normalizeLead(expected,id)))return {errors:["conflict"],items:leads};}
   const errors=validateLead(input);
   if(errors.length)return {errors,items:leads};
   const item=normalizeLead(input,id);

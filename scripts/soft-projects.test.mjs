@@ -33,3 +33,13 @@ test("task counters reject values that only coerce to numbers",()=>{
  }
  assert.deepEqual(validateProject({...valid,tasksTotal:"12",tasksDone:"0"}),[]);
 });
+
+test("stale edits preserve changed and deleted records",()=>{
+ const original=normalizeProject(valid,"a");
+ for(const latest of [[{...original,notes:"Newer change"}],[]]){
+ const result=upsertProject(latest,{...valid,notes:"Stale edit"},"a",original);
+ assert.deepEqual(result.errors,["conflict"]);assert.strictEqual(result.items,latest);
+ }
+ const result=upsertProject([original],{...valid,notes:"Current edit"},"a",{...original});
+ assert.deepEqual(result.errors,[]);assert.equal(result.items[0].notes,"Current edit");
+});

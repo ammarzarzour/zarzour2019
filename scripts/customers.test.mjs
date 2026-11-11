@@ -69,3 +69,13 @@ test("follow-up queue separates overdue, today, future and unscheduled open inqu
  assert.equal(filterLeads(leads,{followUp:"overdue",today,stage:"completed"}).length,0);
  assert.equal(filterLeads(leads).length,6);
 });
+
+test("stale edits preserve changed and deleted records",()=>{
+ const original=normalizeLead(valid,"a");
+ for(const latest of [[{...original,notes:"Newer change"}],[]]){
+ const result=upsertLead(latest,{...valid,notes:"Stale edit"},"a",original);
+ assert.deepEqual(result.errors,["conflict"]);assert.strictEqual(result.items,latest);
+ }
+ const result=upsertLead([original],{...valid,notes:"Current edit"},"a",{...original});
+ assert.deepEqual(result.errors,[]);assert.equal(result.items[0].notes,"Current edit");
+});
