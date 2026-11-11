@@ -25,3 +25,11 @@ test("editing cannot bypass delivery readiness or invalid task counts",()=>{
  const result=upsertProject(items,{...valid,status:"completed",tasksDone:"12"},"a");
  assert.deepEqual(result.errors,[]);assert.equal(result.items[0].status,"completed");
 });
+
+test("task counters reject values that only coerce to numbers",()=>{
+ for(const value of [null,true,false,[],[1],{}, "", " ", "01", "1e2","0x10","+2"," 2"]){
+ assert.ok(validateProject({...valid,tasksTotal:value}).includes("tasksTotal"));
+ assert.ok(validateProject({...valid,tasksDone:value}).includes("tasksDone"));
+ }
+ assert.deepEqual(validateProject({...valid,tasksTotal:"12",tasksDone:"0"}),[]);
+});

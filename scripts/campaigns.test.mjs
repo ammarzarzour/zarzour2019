@@ -26,3 +26,11 @@ test("editing cannot bypass activation readiness or invalid funnel checks",()=>{
  const paused=upsertCampaign(items,{...valid,status:"paused",trackingReady:false},"a");
  assert.deepEqual(paused.errors,[]);assert.equal(paused.items[0].trackingReady,false);
 });
+
+test("stored funnel counts reject coercible non-numeric values",()=>{
+ for(const value of [null,true,false,[],[1],{}, "", " ", "01", "1e2","0x10","+2"," 2"]){
+ assert.ok(validateCampaign({...valid,inquiries:value}).includes("inquiries"));
+ assert.ok(validateCampaign({...valid,qualified:value}).includes("qualified"));
+ }
+ for(const value of [0,"0",20,"20"])assert.ok(!validateCampaign({...valid,inquiries:value,qualified:0}).includes("inquiries"));
+});

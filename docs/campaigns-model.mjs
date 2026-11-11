@@ -2,7 +2,7 @@ export const services=["travel","tourism","visa","hajj","umrah","multi_service"]
 export const channels=["website","social","whatsapp","email","partner","offline"];
 export const statuses=["planned","active","paused","completed","cancelled"];
 const validDate=value=>{if(typeof value!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const [y,m,d]=value.split("-").map(Number),date=new Date(Date.UTC(y,m-1,d));return y>=2000&&date.getUTCFullYear()===y&&date.getUTCMonth()===m-1&&date.getUTCDate()===d};
-const integer=value=>Number.isInteger(Number(value))&&Number(value)>=0&&Number(value)<=1000000;
+const integer=value=>(typeof value==="number"||typeof value==="string"&&/^(0|[1-9]\d*)$/.test(value))&&Number.isInteger(Number(value))&&Number(value)>=0&&Number(value)<=1000000;
 export function validateCampaign(input){
  const errors=[];
  if(typeof input.reference!=="string"||input.reference.trim().length<2||input.reference.trim().length>50)errors.push("reference");
