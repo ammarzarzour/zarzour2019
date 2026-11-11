@@ -74,3 +74,13 @@ document.getElementById("language").addEventListener("click", () => { lang = lan
 document.getElementById("refresh").addEventListener("click", render);
 render();
 
+
+window.addEventListener("storage", event => {
+ if(event.storageArea!==localStorage)return;
+ if(event.key!==null&&event.key!=="zarzour-language"&&!definitions.some(definition=>definition.key===event.key))return;
+ if(event.key===null||event.key==="zarzour-language"){
+  try{const saved=localStorage.getItem("zarzour-language");lang=["ar","en"].includes(saved)?saved:(navigator.language||"ar").toLowerCase().startsWith("en")?"en":"ar"}
+  catch{lang=(navigator.language||"ar").toLowerCase().startsWith("en")?"en":"ar"}
+ }
+ render();
+});

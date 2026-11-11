@@ -83,3 +83,22 @@ test("discarded record warning adds to operational alerts",()=>{
  const result=readDashboardModule(def,{getItem:()=>'[null]'});
  assert.equal(result.alerts,4);assert.equal(result.ready,0);
 });
+
+import {readFileSync} from "node:fs";
+import vm from "node:vm";
+test("dashboard updates for related storage and language changes only",()=>{
+ const source=readFileSync(new URL("../docs/dashboard.mjs",import.meta.url),"utf8");
+ const listener=source.slice(source.indexOf('window.addEventListener("storage"'));
+ assert.ok(listener.startsWith('window.addEventListener("storage"'));
+ let handler,rendered=0,saved="en";
+ const localStorage={getItem:()=>saved};
+ const context=vm.createContext({window:{addEventListener:(name,fn)=>{assert.equal(name,"storage");handler=fn}},localStorage,navigator:{language:"ar-SY"},definitions:[{key:"contract-key"}],render:()=>rendered++});
+ vm.runInContext('let lang="ar";'+listener,context);
+ handler({key:"other-project",storageArea:localStorage});assert.equal(rendered,0);
+ handler({key:"contract-key",storageArea:{}});assert.equal(rendered,0);
+ handler({key:"contract-key",storageArea:localStorage});assert.equal(rendered,1);
+ handler({key:"zarzour-language",storageArea:localStorage});assert.equal(rendered,2);assert.equal(vm.runInContext("lang",context),"en");
+ saved=null;handler({key:null,storageArea:localStorage});assert.equal(rendered,3);assert.equal(vm.runInContext("lang",context),"ar");
+ saved="invalid";handler({key:"zarzour-language",storageArea:localStorage});assert.equal(vm.runInContext("lang",context),"ar");
+ localStorage.getItem=()=>{throw Error("blocked")};handler({key:"zarzour-language",storageArea:localStorage});assert.equal(vm.runInContext("lang",context),"ar");
+});
