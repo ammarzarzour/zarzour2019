@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {filterLeads,leadMetrics,normalizeLead,safeLeads,upsertLead,validateLead} from "../docs/customers-model.mjs";
+import {leadFollowUp,filterLeads,leadMetrics,normalizeLead,safeLeads,upsertLead,validateLead} from "../docs/customers-model.mjs";
 
 const valid={reference:"REQ-204",service:"umrah",source:"website",stage:"inquiry",followUp:"2099-03-02",notes:"Synthetic test record"};
 
@@ -52,4 +52,20 @@ test("invalid edits leave original records intact",()=>{
  const items=[normalizeLead(valid,"a")];
  const result=upsertLead(items,{...valid,followUp:"2099-02-30"},"a");
  assert.deepEqual(result.errors,["followUp"]);assert.strictEqual(result.items,items);
+});
+
+test("follow-up queue separates overdue, today, future and unscheduled open inquiries",()=>{
+ const today="2099-03-02";
+ const leads=[
+ normalizeLead({...valid,followUp:"2099-03-01"},"late"),
+ normalizeLead(valid,"today"),
+ normalizeLead({...valid,followUp:"2099-03-03"},"future"),
+ normalizeLead({...valid,followUp:""},"none"),
+ normalizeLead({...valid,stage:"completed",followUp:"2099-03-01"},"closed"),
+ normalizeLead({...valid,stage:"archived"},"archived")];
+ for(const [followUp,id]of [["overdue","late"],["today","today"],["upcoming","future"],["unscheduled","none"]])
+ assert.deepEqual(filterLeads(leads,{followUp,today}).map(x=>x.id),[id]);
+ assert.equal(leadFollowUp(leads[4],today),"closed");assert.equal(leadFollowUp(leads[5],today),"closed");
+ assert.equal(filterLeads(leads,{followUp:"overdue",today,stage:"completed"}).length,0);
+ assert.equal(filterLeads(leads).length,6);
 });

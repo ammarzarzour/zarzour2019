@@ -38,9 +38,9 @@ export function leadMetrics(leads,today){
   return {total:leads.length,active:active.length,documents:leads.filter(item=>item.stage==="documents").length,booked:leads.filter(item=>item.stage==="booked").length,completed:leads.filter(item=>item.stage==="completed").length,overdue:active.filter(item=>item.followUp&&item.followUp<today).length,dueToday:active.filter(item=>item.followUp===today).length};
 }
 
-export function filterLeads(leads,{query="",service="",stage=""}={}){
+export function filterLeads(leads,{query="",service="",stage="",followUp="",today=""}={}){
   const needle=query.trim().toLocaleLowerCase();
-  return leads.filter(item=>(!service||item.service===service)&&(!stage||item.stage===stage)&&(!needle||item.reference.toLocaleLowerCase().includes(needle)||item.notes.toLocaleLowerCase().includes(needle)));
+  return leads.filter(item=>(!followUp||leadFollowUp(item,today)===followUp)&&(!service||item.service===service)&&(!stage||item.stage===stage)&&(!needle||item.reference.toLocaleLowerCase().includes(needle)||item.notes.toLocaleLowerCase().includes(needle)));
 }
 
 export function upsertLead(leads,input,id){
@@ -49,4 +49,11 @@ export function upsertLead(leads,input,id){
   const item=normalizeLead(input,id);
   if(leads.some(existing=>existing.id!==id&&existing.reference.trim().toUpperCase()===item.reference.toUpperCase()))return {errors:["duplicateReference"],items:leads};
   return {errors:[],items:leads.some(existing=>existing.id===id)?leads.map(existing=>existing.id===id?item:existing):[item,...leads]};
+}
+
+export function leadFollowUp(item,today){
+ if(["completed","archived"].includes(item.stage))return "closed";
+ if(!item.followUp)return "unscheduled";
+ if(item.followUp<today)return "overdue";
+ return item.followUp===today?"today":"upcoming";
 }
