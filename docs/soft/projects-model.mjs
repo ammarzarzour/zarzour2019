@@ -7,3 +7,11 @@ export function safeProjects(value){if(!Array.isArray(value))return [];const see
 const plus=(today,days)=>new Date(Date.parse(today+"T00:00:00Z")+days*86400000).toISOString().slice(0,10);
 export function projectMetrics(items,today){const open=items.filter(x=>x.status!=="completed"),taskTotal=items.reduce((n,x)=>n+x.tasksTotal,0),taskDone=items.reduce((n,x)=>n+x.tasksDone,0);return {total:items.length,active:items.filter(x=>x.status==="active").length,blocked:items.filter(x=>x.status==="blocked").length,overdue:open.filter(x=>x.targetDate<today).length,dueSoon:open.filter(x=>x.targetDate>=today&&x.targetDate<=plus(today,7)).length,releaseReady:items.filter(x=>["release","maintenance"].includes(x.stage)&&!deliveryReadiness(x).blockers.length).length,progress:taskTotal?Math.round(taskDone/taskTotal*100):0}}
 export function filterProjects(items,{query="",type="",status=""}={}){const needle=query.trim().toLocaleLowerCase();return items.filter(x=>(!type||x.type===type)&&(!status||x.status===status)&&(!needle||x.reference.toLocaleLowerCase().includes(needle)||x.notes.toLocaleLowerCase().includes(needle)))}
+
+export function upsertProject(items,input,id){
+ const errors=validateProject(input);if(errors.length)return {errors,items};
+ const item=normalizeProject(input,id);
+ if(items.some(x=>x.id!==id&&x.reference.trim().toUpperCase()===item.reference.toUpperCase()))return {errors:["duplicateReference"],items};
+ if(item.status==="completed"&&deliveryReadiness(item).blockers.length)return {errors:["readiness"],items};
+ return {errors:[],items:items.some(x=>x.id===id)?items.map(x=>x.id===id?item:x):[item,...items]};
+}
