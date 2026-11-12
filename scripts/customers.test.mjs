@@ -79,3 +79,7 @@ test("stale edits preserve changed and deleted records",()=>{
  const result=upsertLead([original],{...valid,notes:"Current edit"},"a",{...original});
  assert.deepEqual(result.errors,[]);assert.equal(result.items[0].notes,"Current edit");
 });
+
+import * as storageModel from "../docs/customers-model.mjs";
+import {verifyStorageRetry} from "./form-storage-harness.mjs";
+for(const editing of [false,true])test(`storage failure preserves ${editing?"edit":"new"} inputs and retry saves once`,()=>verifyStorageRetry("../docs/customers.mjs","leads",valid,storageModel,editing));
