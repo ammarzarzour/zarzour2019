@@ -47,3 +47,30 @@ test("stale edits preserve changed and deleted records",()=>{
 import * as storageModel from "../docs/soft/projects-model.mjs";
 import {verifyStorageRetry} from "./form-storage-harness.mjs";
 for(const editing of [false,true])test(`storage failure preserves ${editing?"edit":"new"} inputs and retry saves once`,()=>verifyStorageRetry("../docs/soft/projects.mjs","items",valid,storageModel,editing));
+import vm from "node:vm";
+import {readFileSync} from "node:fs";
+
+test("row actions preserve newer projects and edit forms on conflict or storage failure",()=>{
+ const source=readFileSync(new URL("../docs/soft/projects.mjs",import.meta.url),"utf8");
+ const listeners=source.slice(source.indexOf('rows.addEventListener("change"'),source.indexOf(';for(const id of ["search"'));
+ const original=normalizeProject(valid,"one"),other=normalizeProject({...valid,reference:"SOFT-102"},"two");
+ for(const action of ["status","delete"])for(const scenario of ["success","changed","deleted","invalid","partial","writeFailure","completionBlocked"]){
+  let stored=JSON.stringify(scenario==="changed"?[{...original,notes:"Newer edit"},other]:scenario==="deleted"?[other]:[original,other]);
+  if(scenario==="invalid")stored="{bad";
+  if(scenario==="partial")stored=JSON.stringify([original,{id:"bad"}]);
+  const before=stored,handlers={};let cancelled=0,saves=0;
+  const context=vm.createContext({...storageModel,items:[original],editingId:"one",editingSnapshot:original,key:"soft",lang:"en",
+   rows:{addEventListener:(event,fn)=>handlers[event]=fn},localStorage:{getItem:()=>stored},
+   save:items=>{saves++;if(scenario==="writeFailure")return false;stored=JSON.stringify(items);return true},
+   show:()=>{},render:()=>{},cancelEdit:()=>cancelled++});
+  vm.runInContext(listeners,context);
+  const status=scenario==="completionBlocked"?"completed":"blocked";
+  if(action==="delete")handlers.click({target:{dataset:{deleteId:"one"}}});
+  else handlers.change({target:{dataset:{statusId:"one"},value:status}});
+  const success=scenario==="success"||(action==="delete"&&scenario==="completionBlocked");
+  if(success){const saved=JSON.parse(stored);assert.deepEqual(saved.find(x=>x.id==="two"),other);assert.equal(saved.length,action==="delete"?1:2);if(action==="status")assert.equal(saved[0].status,"blocked")}
+  else assert.equal(stored,before,action+" "+scenario+" must preserve saved data");
+  assert.equal(cancelled,success&&action==="delete"?1:0,"form must survive rejected deletion");
+  if(scenario==="writeFailure"){assert.equal(saves,1);assert.equal(context.items[0].status,"active")}
+ }
+});
