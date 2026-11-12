@@ -22,7 +22,30 @@ rows.addEventListener("change",event=>{
  else leads=latest;
  render();
 });
-rows.addEventListener("click",event=>{const editId=event.target.dataset.editId;if(editId){const item=leads.find(item=>item.id===editId);if(!item)return;editingId=editId;editingSnapshot={...item};for(const key of ["reference","service","source","stage","followUp","notes"])form.elements[key].value=item[key];document.getElementById("cancel-edit").hidden=false;document.getElementById("reference").focus();return}const id=event.target.dataset.deleteId;if(!id)return;const index=leads.findIndex(item=>item.id===id);if(index<0)return;if(editingId===id){editingId=null;form.reset();document.getElementById("cancel-edit").hidden=true}deleted={item:leads[index],index};leads.splice(index,1);save();show(lang==="ar"?"حُذف السجل.":"Record deleted.");const undo=document.createElement("button");undo.type="button";undo.className="undo";undo.textContent=lang==="ar"?"تراجع":"Undo";undo.onclick=()=>{if(!deleted)return;leads.splice(deleted.index,0,deleted.item);deleted=null;save();message.hidden=true;render()};message.append(undo);render()});
+rows.addEventListener("click",event=>{const editId=event.target.dataset.editId;if(editId){const item=leads.find(item=>item.id===editId);if(!item)return;editingId=editId;editingSnapshot={...item};for(const key of ["reference","service","source","stage","followUp","notes"])form.elements[key].value=item[key];document.getElementById("cancel-edit").hidden=false;document.getElementById("reference").focus();return}const id=event.target.dataset.deleteId;if(!id)return;
+ const expected=leads.find(item=>item.id===id);if(!expected)return;
+ const latest=readCustomerRegister();if(!latest)return;
+ const checked=upsertLead(latest,expected,id,expected);
+ if(checked.errors.length){leads=latest;show(lang==="ar"?"تغير السجل أو حُذف؛ لم يُنفذ الحذف.":"Record changed or was deleted; deletion was not applied.",true);render();return}
+ const index=latest.findIndex(item=>item.id===id),next=latest.filter(item=>item.id!==id);
+ if(!save(next)){leads=latest;render();return}
+ deleted={item:latest[index],index};leads=next;
+ if(editingId===id){editingId=null;editingSnapshot=null;form.reset();document.getElementById("cancel-edit").hidden=true}
+ show(lang==="ar"?"حُذف السجل.":"Record deleted.");
+ const undo=document.createElement("button");undo.type="button";undo.className="undo";undo.textContent=lang==="ar"?"تراجع":"Undo";
+ undo.onclick=()=>{
+  if(!deleted)return;const current=readCustomerRegister();if(!current){message.append(undo);return}
+  const result=upsertLead(current,deleted.item,deleted.item.id);
+  if(current.some(item=>item.id===deleted.item.id)||result.errors.length){leads=current;show(lang==="ar"?"تعذر التراجع: المعرّف أو الرمز المرجعي مستخدم الآن.":"Cannot undo: the ID or reference is now in use.",true);message.append(undo);render();return}
+  const restored=[...current];restored.splice(Math.min(deleted.index,current.length),0,deleted.item);
+  if(!save(restored)){leads=current;message.append(undo);render();return}
+  leads=restored;deleted=null;message.hidden=true;render();
+ };message.append(undo);render();
+});
+function readCustomerRegister(){
+ try{const raw=localStorage.getItem(storageKey),parsed=raw===null?[]:JSON.parse(raw);if(!Array.isArray(parsed))throw Error("Invalid register");const latest=safeLeads(parsed);if(latest.length!==parsed.length)throw Error("Invalid records");return latest}
+ catch{show(lang==="ar"?"تعذر قراءة سجل كامل وصالح؛ لم تُحفظ العملية.":"A complete valid register could not be read; operation was not saved.",true);return null}
+}
 for(const id of ["search","filter-service","filter-stage","filter-follow-up"])document.getElementById(id).addEventListener(id==="search"?"input":"change",render);
 document.getElementById("language").addEventListener("click",()=>{lang=lang==="ar"?"en":"ar";try{localStorage.setItem(languageKey,lang)}catch{}applyLanguage()});
 document.getElementById("cancel-edit").addEventListener("click",()=>{editingId=null;form.reset();document.getElementById("cancel-edit").hidden=true;form.querySelectorAll("[aria-invalid]").forEach(node=>node.removeAttribute("aria-invalid"));message.hidden=true});

@@ -107,3 +107,33 @@ test("inline stage changes preserve concurrent records and reject stale or unrea
   if(scenario==="writeFailure")assert.equal(context.leads[0].stage,"inquiry");
  }
 });
+test("delete and undo preserve concurrent records, reject conflicts and survive failed writes",()=>{
+ const source=readFileSync(new URL("../docs/customers.mjs",import.meta.url),"utf8");
+ const listener=source.slice(source.indexOf('rows.addEventListener("click"'),source.indexOf('\nfor(const id of ["search"'));
+ const original={...valid,id:"one"},other={...valid,id:"two",reference:"REQ-205"};
+ const make=(saved,fail=false)=>{
+  let persisted=saved,handler,undo,resets=0;
+  const context=vm.createContext({...storageModel,leads:[original],editingId:"one",editingSnapshot:original,deleted:null,lang:"en",storageKey:"test",
+   rows:{addEventListener:(_,fn)=>handler=fn},form:{reset:()=>resets++},
+   localStorage:{getItem:()=>persisted},document:{getElementById:()=>({}),createElement:()=>({})},
+   message:{append:button=>undo=button},show:()=>{},render:()=>{},
+   save:items=>{if(fail)return false;persisted=JSON.stringify(items);return true}});
+  vm.runInContext(listener,context);
+  return {remove:()=>handler({target:{dataset:{deleteId:"one"}}}),undo:()=>undo.onclick(),read:()=>persisted,
+   write:value=>persisted=value,fail:value=>fail=value,context,resets:()=>resets};
+ };
+ for(const saved of [JSON.stringify([{...original,notes:"New edit"},other]),JSON.stringify([other]),"{bad",JSON.stringify([original,{id:"bad"}])]){
+  const app=make(saved);app.remove();assert.equal(app.read(),saved);assert.equal(app.resets(),0);assert.equal(app.context.deleted,null);
+ }
+ const failed=make(JSON.stringify([original,other]),true);failed.remove();
+ assert.equal(failed.context.editingId,"one");assert.equal(failed.resets(),0);assert.equal(failed.context.deleted,null);
+ const app=make(JSON.stringify([original,other]));app.remove();
+ assert.deepEqual(JSON.parse(app.read()),[other]);assert.equal(app.resets(),1);
+ const third={...valid,id:"three",reference:"REQ-206"};
+ for(const conflict of [{...original,notes:"Recreated"}, {...original,id:"new-id"}]){
+  const saved=JSON.stringify([other,conflict]);app.write(saved);app.undo();assert.equal(app.read(),saved);assert.ok(app.context.deleted);
+ }
+ app.write(JSON.stringify([other,third]));app.fail(true);app.undo();
+ assert.deepEqual(JSON.parse(app.read()),[other,third]);assert.ok(app.context.deleted);
+ app.fail(false);app.undo();assert.deepEqual(JSON.parse(app.read()),[original,other,third]);assert.equal(app.context.deleted,null);
+});
