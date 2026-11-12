@@ -83,3 +83,27 @@ test("stale edits preserve changed and deleted records",()=>{
 import * as storageModel from "../docs/customers-model.mjs";
 import {verifyStorageRetry} from "./form-storage-harness.mjs";
 for(const editing of [false,true])test(`storage failure preserves ${editing?"edit":"new"} inputs and retry saves once`,()=>verifyStorageRetry("../docs/customers.mjs","leads",valid,storageModel,editing));
+import vm from "node:vm";
+import {readFileSync} from "node:fs";
+
+test("inline stage changes preserve concurrent records and reject stale or unreadable storage",()=>{
+ const source=readFileSync(new URL("../docs/customers.mjs",import.meta.url),"utf8");
+ const listener=source.slice(source.indexOf('rows.addEventListener("change"'),source.indexOf('rows.addEventListener("click"'));
+ const original={...valid,id:"one"},other={...valid,id:"two",reference:"REQ-205"};
+ for(const scenario of ["success","changed","deleted","invalid","partial","writeFailure"]){
+  let persisted=JSON.stringify(scenario==="changed"?[{...original,notes:"Newer edit"},other]:scenario==="deleted"?[other]:[original,other]);
+  if(scenario==="invalid")persisted="{broken";
+  if(scenario==="partial")persisted=JSON.stringify([original,{id:"bad"}]);
+  const before=persisted;let handler,saves=0;
+  const context=vm.createContext({...storageModel,leads:[original],lang:"en",storageKey:"test",
+   rows:{addEventListener:(_,fn)=>handler=fn},localStorage:{getItem:()=>persisted},
+   save:items=>{saves++;if(scenario==="writeFailure")return false;persisted=JSON.stringify(items);return true},
+   show:()=>{},render:()=>{}});
+  vm.runInContext(listener,context);
+  handler({target:{dataset:{stageId:"one"},value:"qualified"}});
+  if(scenario==="success"){assert.equal(JSON.parse(persisted)[0].stage,"qualified");assert.deepEqual(JSON.parse(persisted)[1],other)}
+  else assert.equal(persisted,before,scenario+" must preserve storage");
+  assert.equal(saves,["success","writeFailure"].includes(scenario)?1:0);
+  if(scenario==="writeFailure")assert.equal(context.leads[0].stage,"inquiry");
+ }
+});
