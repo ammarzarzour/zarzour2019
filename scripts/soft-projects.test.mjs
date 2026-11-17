@@ -11,7 +11,7 @@ test("deadline calendar uses local date and rolls forward without a stale UTC da
 test("validates and normalizes an independent software project",()=>{assert.deepEqual(validateProject(valid),[]);const item=normalizeProject(valid,"p");assert.equal(item.tasksTotal,12);assert.equal(item.tasksDone,7);assert.equal(item.securityReviewed,true)});
 test("rejects invalid enums, dates and task counts",()=>{assert.deepEqual(validateProject({...valid,reference:"",type:"travel",stage:"payment",status:"unknown",targetDate:"2099-02-30",tasksTotal:"0",tasksDone:"13",notes:"x".repeat(241)}),["reference","type","stage","status","targetDate","tasksTotal","tasksDone","notes"])});
 test("requires acceptance, security, bilingual review and complete tasks",()=>{assert.deepEqual(deliveryReadiness(normalizeProject({...valid,tasksDone:"12"},"ok")),{blockers:[],score:100});assert.deepEqual(deliveryReadiness(normalizeProject({...valid,securityReviewed:false},"b")),{blockers:["securityReviewed","tasksComplete"],score:50})});
-test("restores unique valid projects only",()=>{const one=normalizeProject(valid,"same"),other={...one,id:"other"};assert.deepEqual(safeProjects([null,{...one,id:" "},one,{...one,reference:"duplicate"},other]).map(x=>x.id),["same","other"])});
+test("restores unique valid projects only",()=>{const one=normalizeProject(valid,"same"),other={...one,id:"other",reference:"SOFT-102"};assert.deepEqual(safeProjects([null,{...one,id:" "},one,{...one,reference:"duplicate"},other]).map(x=>x.id),["same","other"])});
 test("restored registers reject duplicate references after trimming and case folding",()=>{
  const first=normalizeProject(valid,"first");
  const collision=normalizeProject({...valid,reference:" soft-101 "},"second");
@@ -20,9 +20,9 @@ test("restored registers reject duplicate references after trimming and case fol
  assert.deepEqual(safeProjects([collision,first]).map(x=>x.id),["second"]);
 });
 test("incomplete restored completed projects remain saved but count as open",()=>{
- const ready=normalizeProject({...valid,status:"completed",tasksDone:"12",targetDate:"2099-01-01"},"ready");
+ const ready=normalizeProject({...valid,status:"completed",tasksDone:"12",targetDate:"2099-01-01",reference:"SOFT-103"},"ready");
  const incomplete=normalizeProject({...valid,status:"completed",tasksDone:"7",targetDate:"2099-01-01"},"incomplete");
- const unreviewed=normalizeProject({...valid,status:"completed",tasksDone:"12",securityReviewed:false,targetDate:"2099-01-04"},"unreviewed");
+ const unreviewed=normalizeProject({...valid,status:"completed",tasksDone:"12",securityReviewed:false,targetDate:"2099-01-04",reference:"SOFT-102"},"unreviewed");
  const restored=safeProjects([incomplete,unreviewed,ready]);
  assert.deepEqual(restored.map(x=>x.id),["incomplete","unreviewed","ready"]);
  const metrics=projectMetrics(restored,"2099-01-02");
