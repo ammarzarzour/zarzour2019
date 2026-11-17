@@ -1,0 +1,42 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdtemp, readFile, readdir, writeFile, mkdir, rm } from 'node:fs/promises';
+import path from 'node:path';
+import os from 'node:os';
+import { buildSoftStandalone, softFiles } from './build-soft-standalone.mjs';
+
+async function fixture(run) {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'zarzour-soft-bundle-'));
+  const source = path.join(root, 'source');
+  await mkdir(source);
+  try {
+    for (const file of softFiles) await writeFile(path.join(source, file), file === 'index.html' ? '<a href="brief.html">Brief</a>' : '');
+    await run({ root, source, destination: path.join(root, 'published') });
+  } finally { await rm(root, { recursive: true, force: true }); }
+}
+
+test('standalone package contains only the seven audited Soft assets', async () => {
+  await fixture(async ({ source, destination }) => {
+    await writeFile(path.join(source, 'travel-private.json'), 'not part of Soft');
+    assert.equal(await buildSoftStandalone(source, destination), 7);
+    assert.deepEqual((await readdir(destination)).sort(), [...softFiles].sort());
+    assert.match(await readFile(path.join(destination, 'index.html'), 'utf8'), /brief.html/);
+  });
+});
+
+test('rejects navigation or scripts that escape the Soft package', async () => {
+  for (const value of ['../dashboard.html', '/travel/', 'https://example.com/app.js', 'missing.html']) {
+    await fixture(async ({ source, destination }) => {
+      await writeFile(path.join(source, 'index.html'), `<script src="${value}"></script>`);
+      await assert.rejects(buildSoftStandalone(source, destination), /not standalone|undeclared local dependency/);
+    });
+  }
+});
+
+test('rejects source-tree destinations and imports outside Soft', async () => {
+  await fixture(async ({ source, destination }) => {
+    await assert.rejects(buildSoftStandalone(source, path.join(source, 'out')), /outside the source/);
+    await writeFile(path.join(source, 'projects.mjs'), 'import { x } from "../../travel.mjs";');
+    await assert.rejects(buildSoftStandalone(source, destination), /outside standalone Soft bundle/);
+  });
+});
