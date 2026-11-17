@@ -117,3 +117,22 @@ test("cross-tab storage events refresh the board without writes or lost edit inp
  callback({key:null,newValue:null});
  assert.equal(context.items.length,0);assert.equal(renders,2);assert.equal(writes,0);
 });
+
+test("deleting incomplete historical completed records checks the latest row without requiring release readiness",()=>{
+ const source=readFileSync(new URL("../docs/soft/projects.mjs",import.meta.url),"utf8");
+ const listeners=source.slice(source.indexOf('rows.addEventListener("change"'),source.indexOf(';for(const id of ["search"'));
+ const legacy=normalizeProject({...valid,status:"completed",tasksDone:"7"},"legacy");
+ const newer={...legacy,notes:"Edited in another tab"};
+ for(const scenario of ["unchanged","changed","deleted","storageFailure"]){
+  let stored=JSON.stringify(scenario==="changed"?[newer]:scenario==="deleted"?[]:[legacy]);
+  const before=stored,handlers={};let notices=[],cancelled=0;
+  const context=vm.createContext({...storageModel,items:[legacy],editingId:"legacy",editingSnapshot:legacy,key:"soft",lang:"en",
+   rows:{addEventListener:(event,fn)=>handlers[event]=fn},localStorage:{getItem:()=>stored},
+   save:next=>{if(scenario==="storageFailure")return false;stored=JSON.stringify(next);return true},
+   show:message=>notices.push(message),render:()=>{},cancelEdit:()=>cancelled++});
+  vm.runInContext(listeners,context);
+  handlers.click({target:{dataset:{deleteId:"legacy"}}});
+  if(scenario==="unchanged"){assert.deepEqual(JSON.parse(stored),[]);assert.equal(cancelled,1)}
+  else{assert.equal(stored,before);assert.equal(cancelled,0);assert.ok(notices.length)}
+ }
+});
