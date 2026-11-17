@@ -53,3 +53,15 @@ before uploading. Repository rename remains pending. Keep the current URL until 
 or required navigation to the Travel application. Publish that directory as its own
 static site when a separate Soft host/repository is available. This does not yet
 establish a separate backend or a separate GitHub repository.
+
+## Portable Zarzour Soft release package
+
+Run `node scripts/build-soft-standalone.mjs` to assemble an allowlisted,
+seven-file static release at `dist/zarzour-soft/`. Run
+`node --test scripts/build-soft-standalone.test.mjs` to test the isolation
+rules. The builder rejects parent-relative/absolute/external navigation and
+module dependencies outside the Soft package; it never copies Travel assets
+or touches customer data. Deploy the **contents** of that output directory
+to a separate Soft hosting root when available. This prepares portable
+hosting but does not create a new repository, domain, backend or deployment,
+and does not enable real project submission or payments.
