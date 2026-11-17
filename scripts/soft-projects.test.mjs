@@ -1,5 +1,13 @@
-import test from "node:test";import assert from "node:assert/strict";import {deliveryReadiness,filterProjects,normalizeProject,projectMetrics,safeProjects,upsertProject,validateProject} from "../docs/soft/projects-model.mjs";
+import test from "node:test";import assert from "node:assert/strict";import {deliveryReadiness,filterProjects,localToday,normalizeProject,projectMetrics,safeProjects,upsertProject,validateProject} from "../docs/soft/projects-model.mjs";
 const valid={reference:"SOFT-101",type:"website",stage:"build",status:"active",targetDate:"2099-03-01",tasksTotal:"12",tasksDone:"7",acceptanceReady:"on",securityReviewed:"on",bilingualReviewed:"on",notes:"Synthetic independent software project"};
+test("deadline calendar uses local date and rolls forward without a stale UTC day",()=>{
+ const before=new Date(2026,10,17,23,59,59),after=new Date(2026,10,18,0,0,1);
+ assert.equal(localToday(before),"2026-11-17");
+ assert.equal(localToday(after),"2026-11-18");
+ const item=normalizeProject({...valid,targetDate:"2026-11-17"},"deadline");
+ assert.equal(projectMetrics([item],localToday(before)).overdue,0);
+ assert.equal(projectMetrics([item],localToday(after)).overdue,1);
+});
 test("validates and normalizes an independent software project",()=>{assert.deepEqual(validateProject(valid),[]);const item=normalizeProject(valid,"p");assert.equal(item.tasksTotal,12);assert.equal(item.tasksDone,7);assert.equal(item.securityReviewed,true)});
 test("rejects invalid enums, dates and task counts",()=>{assert.deepEqual(validateProject({...valid,reference:"",type:"travel",stage:"payment",status:"unknown",targetDate:"2099-02-30",tasksTotal:"0",tasksDone:"13",notes:"x".repeat(241)}),["reference","type","stage","status","targetDate","tasksTotal","tasksDone","notes"])});
 test("requires acceptance, security, bilingual review and complete tasks",()=>{assert.deepEqual(deliveryReadiness(normalizeProject({...valid,tasksDone:"12"},"ok")),{blockers:[],score:100});assert.deepEqual(deliveryReadiness(normalizeProject({...valid,securityReviewed:false},"b")),{blockers:["securityReviewed","tasksComplete"],score:50})});
