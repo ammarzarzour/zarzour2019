@@ -12,6 +12,13 @@ test("validates and normalizes an independent software project",()=>{assert.deep
 test("rejects invalid enums, dates and task counts",()=>{assert.deepEqual(validateProject({...valid,reference:"",type:"travel",stage:"payment",status:"unknown",targetDate:"2099-02-30",tasksTotal:"0",tasksDone:"13",notes:"x".repeat(241)}),["reference","type","stage","status","targetDate","tasksTotal","tasksDone","notes"])});
 test("requires acceptance, security, bilingual review and complete tasks",()=>{assert.deepEqual(deliveryReadiness(normalizeProject({...valid,tasksDone:"12"},"ok")),{blockers:[],score:100});assert.deepEqual(deliveryReadiness(normalizeProject({...valid,securityReviewed:false},"b")),{blockers:["securityReviewed","tasksComplete"],score:50})});
 test("restores unique valid projects only",()=>{const one=normalizeProject(valid,"same"),other={...one,id:"other"};assert.deepEqual(safeProjects([null,{...one,id:" "},one,{...one,reference:"duplicate"},other]).map(x=>x.id),["same","other"])});
+test("restored registers reject duplicate references after trimming and case folding",()=>{
+ const first=normalizeProject(valid,"first");
+ const collision=normalizeProject({...valid,reference:" soft-101 "},"second");
+ const unique=normalizeProject({...valid,reference:"SOFT-102"},"third");
+ assert.deepEqual(safeProjects([first,collision,unique]).map(x=>x.id),["first","third"]);
+ assert.deepEqual(safeProjects([collision,first]).map(x=>x.id),["second"]);
+});
 test("incomplete restored completed projects remain saved but count as open",()=>{
  const ready=normalizeProject({...valid,status:"completed",tasksDone:"12",targetDate:"2099-01-01"},"ready");
  const incomplete=normalizeProject({...valid,status:"completed",tasksDone:"7",targetDate:"2099-01-01"},"incomplete");
