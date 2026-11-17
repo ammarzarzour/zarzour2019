@@ -31,3 +31,10 @@ jobs:
           test "$(find dist/zarzour-soft -maxdepth 1 -type f | wc -l)" -eq 7
           test -f dist/zarzour-soft/index.html
           test -f dist/zarzour-soft/projects.html
+      - name: Upload independently deployable Soft package
+        uses: actions/upload-artifact@v4
+        with:
+          name: zarzour-soft-standalone
+          path: dist/zarzour-soft/
+          if-no-files-found: error
+          retention-days: 14
