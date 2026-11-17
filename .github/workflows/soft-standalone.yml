@@ -1,0 +1,33 @@
+name: Validate standalone Zarzour Soft package
+on:
+  push:
+    paths:
+      - 'docs/soft/**'
+      - 'scripts/build-soft-standalone.mjs'
+      - 'scripts/build-soft-standalone.test.mjs'
+      - '.github/workflows/soft-standalone.yml'
+  pull_request:
+    paths:
+      - 'docs/soft/**'
+      - 'scripts/build-soft-standalone.mjs'
+      - 'scripts/build-soft-standalone.test.mjs'
+      - '.github/workflows/soft-standalone.yml'
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test isolated packaging and checked-in assets
+        run: node --test scripts/build-soft-standalone.test.mjs
+      - name: Build actual independent package
+        run: node scripts/build-soft-standalone.mjs
+      - name: Verify output is isolated
+        run: |
+          test "$(find dist/zarzour-soft -maxdepth 1 -type f | wc -l)" -eq 7
+          test -f dist/zarzour-soft/index.html
+          test -f dist/zarzour-soft/projects.html
