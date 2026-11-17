@@ -11,7 +11,11 @@ function changeStoredProject(id,status){
  let latest;
  try{const raw=localStorage.getItem(key),parsed=raw===null?[]:JSON.parse(raw);if(!Array.isArray(parsed))throw Error("Invalid register");latest=safeProjects(parsed);if(latest.length!==parsed.length)throw Error("Invalid records")}
  catch{show(lang==="ar"?"تعذر قراءة سجل كامل وصالح؛ لم تُحفظ العملية.":"A complete valid register could not be read; operation was not saved.",true);render();return false}
- const result=upsertProject(latest,{...expected,...(status===null?{}:{status})},id,expected);
+ // Deletion does not need delivery readiness: historical completed records may be
+ // incomplete. Still reject a stale row before removing anything.
+ const current=latest.find(x=>x.id===id);
+ const conflict=!current||JSON.stringify(current)!==JSON.stringify(expected);
+ const result=status===null?{errors:conflict?["conflict"]:[],items:latest}:upsertProject(latest,{...expected,status},id,expected);
  if(result.errors.length){items=latest;show(result.errors.includes("conflict")?(lang==="ar"?"تغير المشروع أو حُذف في نافذة أخرى؛ راجع أحدث نسخة.":"Project changed or was deleted in another window; review the latest version."):(lang==="ar"?"الإكمال محظور حتى اكتمال معايير التسليم.":"Completion blocked until delivery criteria are met."),true);render();return false}
  const next=status===null?latest.filter(x=>x.id!==id):result.items;
  if(!save(next)){items=latest;show(lang==="ar"?"تعذر الحفظ؛ لم تُنفذ العملية. أعد المحاولة.":"Storage failed; operation was not applied. Try again.",true);render();return false}
