@@ -93,3 +93,27 @@ test("row actions preserve newer projects and edit forms on conflict or storage 
   if(scenario==="writeFailure"){assert.equal(saves,1);assert.equal(context.items[0].status,"active")}
  }
 });
+
+test("cross-tab storage events refresh the board without writes or lost edit inputs",()=>{
+ const source=readFileSync(new URL("../docs/soft/projects.mjs",import.meta.url),"utf8");
+ const listener=source.slice(source.indexOf('if(typeof window!=="undefined"&&typeof window.addEventListener==="function")window.addEventListener("storage"'));
+ assert.ok(listener.startsWith('if(typeof window'));
+ const original=normalizeProject(valid,"one"),updated={...original,notes:"Other tab update"};
+ let callback,renders=0,writes=0,notices=[],items=[original],editingId="one";
+ const context=vm.createContext({...storageModel,key:"soft-register",lang:"en",items,editingId,
+   window:{addEventListener:(name,fn)=>{assert.equal(name,"storage");callback=fn}},
+   render:()=>renders++,show:(message,error)=>notices.push({message,error}),save:()=>writes++});
+ vm.runInContext(listener,context);
+ callback({key:"unrelated",newValue:"[]"});
+ assert.equal(renders,0);
+ callback({key:"soft-register",newValue:JSON.stringify([updated])});
+ assert.equal(renders,1);assert.equal(context.items[0].notes,"Other tab update");
+ assert.equal(context.editingId,"one");assert.equal(writes,0);
+ assert.match(notices.at(-1).message,/another tab/);
+ callback({key:"soft-register",newValue:"{invalid"});
+ assert.equal(context.items[0].notes,"Other tab update");assert.equal(renders,1);
+ callback({key:"soft-register",newValue:JSON.stringify([updated,{id:"bad"}])});
+ assert.equal(context.items.length,1);assert.equal(renders,1);
+ callback({key:null,newValue:null});
+ assert.equal(context.items.length,0);assert.equal(renders,2);assert.equal(writes,0);
+});
