@@ -4,12 +4,16 @@ test("validates and normalizes an independent software project",()=>{assert.deep
 test("rejects invalid enums, dates and task counts",()=>{assert.deepEqual(validateProject({...valid,reference:"",type:"travel",stage:"payment",status:"unknown",targetDate:"2099-02-30",tasksTotal:"0",tasksDone:"13",notes:"x".repeat(241)}),["reference","type","stage","status","targetDate","tasksTotal","tasksDone","notes"])});
 test("requires acceptance, security, bilingual review and complete tasks",()=>{assert.deepEqual(deliveryReadiness(normalizeProject({...valid,tasksDone:"12"},"ok")),{blockers:[],score:100});assert.deepEqual(deliveryReadiness(normalizeProject({...valid,securityReviewed:false},"b")),{blockers:["securityReviewed","tasksComplete"],score:50})});
 test("restores unique valid projects only",()=>{const one=normalizeProject(valid,"same"),other={...one,id:"other"};assert.deepEqual(safeProjects([null,{...one,id:" "},one,{...one,reference:"duplicate"},other]).map(x=>x.id),["same","other"])});
-test("restored completed projects must meet all delivery gates",()=>{
- const ready=normalizeProject({...valid,status:"completed",tasksDone:"12"},"ready");
- const incomplete=normalizeProject({...valid,status:"completed",tasksDone:"7"},"incomplete");
- const unreviewed=normalizeProject({...valid,status:"completed",tasksDone:"12",securityReviewed:false},"unreviewed");
- const active=normalizeProject(valid,"active");
- assert.deepEqual(safeProjects([incomplete,unreviewed,ready,active]).map(x=>x.id),["ready","active"]);
+test("incomplete restored completed projects remain saved but count as open",()=>{
+ const ready=normalizeProject({...valid,status:"completed",tasksDone:"12",targetDate:"2099-01-01"},"ready");
+ const incomplete=normalizeProject({...valid,status:"completed",tasksDone:"7",targetDate:"2099-01-01"},"incomplete");
+ const unreviewed=normalizeProject({...valid,status:"completed",tasksDone:"12",securityReviewed:false,targetDate:"2099-01-04"},"unreviewed");
+ const restored=safeProjects([incomplete,unreviewed,ready]);
+ assert.deepEqual(restored.map(x=>x.id),["incomplete","unreviewed","ready"]);
+ const metrics=projectMetrics(restored,"2099-01-02");
+ assert.equal(metrics.overdue,1);
+ assert.equal(metrics.dueSoon,1);
+ assert.equal(metrics.releaseReady,0);
 });
 test("calculates delivery health and aggregate progress",()=>{const items=[normalizeProject({...valid,targetDate:"2099-01-01",tasksTotal:"10",tasksDone:"5"},"a"),normalizeProject({...valid,status:"blocked",targetDate:"2099-01-05",tasksTotal:"10",tasksDone:"5"},"b"),normalizeProject({...valid,stage:"release",status:"completed",tasksTotal:"10",tasksDone:"10"},"c")];assert.deepEqual(projectMetrics(items,"2099-01-02"),{total:3,active:1,blocked:1,overdue:1,dueSoon:1,releaseReady:1,progress:67})});
 test("filters projects by reference, note, type and status",()=>{const items=[normalizeProject(valid,"a"),normalizeProject({...valid,reference:"APP-2",type:"mobile_app",status:"blocked",notes:"Bilingual mobile release"},"b")];assert.deepEqual(filterProjects(items,{query:"mobile",type:"mobile_app",status:"blocked"}).map(x=>x.id),["b"])});
