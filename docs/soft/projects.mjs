@@ -21,3 +21,20 @@ function changeStoredProject(id,status){
 }
 rows.addEventListener("click",e=>{const editId=e.target.dataset.editId;if(editId){const item=items.find(x=>x.id===editId);if(!item)return;editingId=editId;editingSnapshot={...item};for(const name of ["reference","type","stage","status","targetDate","tasksTotal","tasksDone","notes"])form.elements.namedItem(name).value=item[name];for(const name of ["acceptanceReady","securityReviewed","bilingualReviewed"])form.elements.namedItem(name).checked=item[name]===true;document.getElementById("cancel-edit").hidden=false;form.elements.namedItem("reference").focus();return}const id=e.target.dataset.deleteId;if(!id)return;changeStoredProject(id,null)});for(const id of ["search","filter-type","filter-status"])document.getElementById(id).addEventListener(id==="search"?"input":"change",render);document.getElementById("language").addEventListener("click",()=>{lang=lang==="ar"?"en":"ar";try{localStorage.setItem(languageKey,lang)}catch{}applyLanguage()});function cancelEdit(){editingId=null;form.reset();document.getElementById("cancel-edit").hidden=true;form.querySelectorAll("[aria-invalid]").forEach(n=>n.removeAttribute("aria-invalid"));message.hidden=true}document.getElementById("cancel-edit").addEventListener("click",cancelEdit);applyLanguage();
 
+
+// Other tabs may update the same local register while this board remains open.
+// Refresh the displayed snapshot without writing back or discarding an edit form.
+if(typeof window!=="undefined"&&typeof window.addEventListener==="function")window.addEventListener("storage",event=>{
+ if(event.key!==key&&event.key!==null)return;
+ try{
+  const parsed=event.newValue===null?[]:JSON.parse(event.newValue);
+  if(!Array.isArray(parsed))throw Error("Invalid register");
+  const latest=safeProjects(parsed);
+  if(latest.length!==parsed.length)throw Error("Incomplete register");
+  items=latest;
+  render();
+  if(editingId)show(lang==="ar"?"تغيّر سجل المشاريع في نافذة أخرى. احتفظ بتعديلاتك وراجع أحدث البيانات قبل الحفظ.":"Projects changed in another tab. Keep your edits and review the latest records before saving.",true);
+ }catch{
+  show(lang==="ar"?"تغيّر التخزين في نافذة أخرى لكن السجل غير صالح؛ لم تُستبدل البيانات المعروضة.":"Storage changed in another tab but the register is invalid; displayed records were preserved.",true);
+ }
+});
