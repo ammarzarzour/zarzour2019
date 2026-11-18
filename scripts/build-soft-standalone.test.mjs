@@ -44,7 +44,7 @@ test('rejects source-tree destinations and imports outside Soft', async () => {
 test('rejects output into an ancestor of the source without modifying source files', async () => {
   await fixture(async ({ root, source }) => {
     const original = await readFile(path.join(source, 'index.html'), 'utf8');
-    await assert.rejects(buildSoftStandalone(source, root), /separate from the source/);
+    await assert.rejects(buildSoftStandalone(source, root), /must not be an ancestor/);
     assert.equal(await readFile(path.join(source, 'index.html'), 'utf8'), original);
     assert.deepEqual((await readdir(root)).sort(), ['source']);
   });
