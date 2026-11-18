@@ -1,6 +1,9 @@
 export const services = ['travel', 'tourism', 'visa', 'hajj', 'umrah'];
 export function validateRequest(input, today = new Date().toISOString().slice(0,10)) {
   const errors = [];
+  if (input === null || typeof input !== 'object' || Array.isArray(input)) {
+    return ['service', 'destination', 'departure', 'travelers'];
+  }
   if (!services.includes(input.service)) errors.push('service');
   if (typeof input.destination !== 'string' || !input.destination.trim() || input.destination.length > 120) errors.push('destination');
   const date = input.departure;
