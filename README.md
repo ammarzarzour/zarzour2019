@@ -73,3 +73,7 @@ The trip brief validator accepts departure and optional return dates only as rea
 are rejected with field errors rather than causing a JavaScript exception.
 Regression coverage: `node --test scripts/request.test.mjs`. This is a local
 planning preview only; it does not submit bookings or process payments.
+
+## Offline traveler return tracking rules (2026-11-18)
+
+`scripts/return-tracking.mjs` provides pure functions to validate expected/actual return dates, flag overdue groups for review, and validate explicit status transitions (`planned`, `departed`, `return_due`, `follow_up`, `returned`). It does **not** store traveler information, automatically change statuses, contact travelers, connect to Supabase, or perform financial actions. A late return is only a suggested status until an authorized operator confirms it. Tests run via `node --test scripts/request.test.mjs` in the existing validation path, or individually via `node --test scripts/return-tracking.test.mjs`. This is a preparatory domain module, **not** a live return monitoring system. Production integration requires authenticated operators, approved RLS policies, an audit trail, and explicit consent/permissions before any real records are used.
