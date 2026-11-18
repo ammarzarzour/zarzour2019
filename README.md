@@ -65,3 +65,11 @@ or touches customer data. Deploy the **contents** of that output directory
 to a separate Soft hosting root when available. This prepares portable
 hosting but does not create a new repository, domain, backend or deployment,
 and does not enable real project submission or payments.
+
+## Trip date input hardening (2026-11-18)
+
+The trip brief validator accepts departure and optional return dates only as real
+`YYYY-MM-DD` strings. Malformed JSON values (numbers, arrays, objects, booleans)
+are rejected with field errors rather than causing a JavaScript exception.
+Regression coverage: `node --test scripts/request.test.mjs`. This is a local
+planning preview only; it does not submit bookings or process payments.
