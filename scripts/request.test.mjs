@@ -85,3 +85,15 @@ test('rejects ambiguous traveler formats and non-text destination or notes',()=>
   assert.ok(validateRequest({...valid,notes},'2026-11-08').includes('notes'));
  assert.deepEqual(validateRequest({...valid,travelers:'200'},'2026-11-08'),[]);
 });
+
+
+test('malformed date types never crash validation or produce a reviewed trip',()=>{
+ for(const departure of [null, 20261220, true, [], {}, '2026-13-01', '2026-02-30']) {
+  assert.doesNotThrow(()=>validateRequest({...valid,departure},'2026-11-08'));
+  assert.ok(validateRequest({...valid,departure},'2026-11-08').includes('departure'));
+ }
+ for(const returnDate of [20261225, true, [], {}, '2026-13-01', '2026-02-30']) {
+  assert.doesNotThrow(()=>validateRequest({...valid,returnDate},'2026-11-08'));
+  assert.ok(validateRequest({...valid,returnDate},'2026-11-08').includes('returnDate'));
+ }
+});
