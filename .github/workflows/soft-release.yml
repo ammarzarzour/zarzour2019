@@ -1,0 +1,46 @@
+name: Zarzour Soft standalone release artifact
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'docs/soft/**'
+      - 'scripts/build-soft-standalone.mjs'
+      - 'scripts/build-soft-standalone.test.mjs'
+      - '.github/workflows/soft-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-soft:
+    name: Validate and package independent Soft site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact commit
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test standalone isolation and source fidelity
+        run: node --test scripts/build-soft-standalone.test.mjs
+      - name: Build independent static site
+        run: node scripts/build-soft-standalone.mjs
+      - name: Verify exact allowlisted release contents
+        run: |
+          node --input-type=module <<'NODE'
+          import { readdir } from 'node:fs/promises';
+          import { softFiles } from './scripts/build-soft-standalone.mjs';
+          import assert from 'node:assert/strict';
+          assert.deepEqual((await readdir('dist/zarzour-soft')).sort(), [...softFiles].sort());
+          NODE
+      - name: Upload portable artifact (not a deployment)
+        uses: actions/upload-artifact@v4
+        with:
+          name: zarzour-soft-standalone
+          path: dist/zarzour-soft/
+          if-no-files-found: error
+          retention-days: 14
