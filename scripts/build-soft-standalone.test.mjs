@@ -64,3 +64,17 @@ test('packages the real checked-in Soft site without Travel assets or changed by
     }
   });
 });
+
+
+test('rejects symlinked output directory and parent without touching source', async () => {
+  const { symlink } = await import('node:fs/promises');
+  await fixture(async ({ root, source }) => {
+    const original = await readFile(path.join(source, 'index.html'), 'utf8');
+    const linkedOutput = path.join(root, 'linked-output');
+    await symlink(source, linkedOutput, 'dir');
+    await assert.rejects(buildSoftStandalone(source, linkedOutput), /symbolic links/);
+    await assert.rejects(buildSoftStandalone(source, path.join(linkedOutput, 'nested')), /symbolic links/);
+    assert.equal(await readFile(path.join(source, 'index.html'), 'utf8'), original);
+    assert.deepEqual((await readdir(source)).sort(), [...softFiles].sort());
+  });
+});
