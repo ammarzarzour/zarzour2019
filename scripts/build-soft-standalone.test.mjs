@@ -96,3 +96,30 @@ test('rejects symlinked or non-regular allowlisted source assets before copying'
     await assert.rejects(readdir(destination), { code: 'ENOENT' });
   });
 });
+
+test('rejects pre-existing destination symlinks and unrelated files without altering them', async () => {
+  const { symlink } = await import('node:fs/promises');
+  await fixture(async ({ root, source, destination }) => {
+    await mkdir(destination);
+    const protectedFile = path.join(root, 'protected.txt');
+    await writeFile(protectedFile, 'unchanged');
+    await symlink(protectedFile, path.join(destination, 'index.html'));
+    await assert.rejects(buildSoftStandalone(source, destination), /Destination asset must be a regular file/);
+    assert.equal(await readFile(protectedFile, 'utf8'), 'unchanged');
+    await rm(path.join(destination, 'index.html'));
+    await writeFile(path.join(destination, 'travel-data.json'), 'keep');
+    await assert.rejects(buildSoftStandalone(source, destination), /unapproved file/);
+    assert.equal(await readFile(path.join(destination, 'travel-data.json'), 'utf8'), 'keep');
+    assert.deepEqual((await readdir(destination)).sort(), ['travel-data.json']);
+  });
+});
+
+test('permits safe rebuild over regular allowlisted destination files', async () => {
+  await fixture(async ({ source, destination }) => {
+    await mkdir(destination);
+    await writeFile(path.join(destination, 'index.html'), 'stale');
+    assert.equal(await buildSoftStandalone(source, destination), softFiles.length);
+    assert.deepEqual((await readdir(destination)).sort(), [...softFiles].sort());
+    assert.equal(await readFile(path.join(destination, 'index.html'), 'utf8'), '<a href="brief.html">Brief</a>');
+  });
+});
