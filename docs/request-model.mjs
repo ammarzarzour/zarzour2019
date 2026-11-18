@@ -2,12 +2,12 @@ export const services = ['travel', 'tourism', 'visa', 'hajj', 'umrah'];
 export function validateRequest(input, today = new Date().toISOString().slice(0,10)) {
   const errors = [];
   if (!services.includes(input.service)) errors.push('service');
-  if (!String(input.destination || '').trim() || input.destination.length > 120) errors.push('destination');
+  if (typeof input.destination !== 'string' || !input.destination.trim() || input.destination.length > 120) errors.push('destination');
   const date = input.departure || '';
   const parsed = new Date(date + 'T00:00:00Z');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(+parsed) || parsed.toISOString().slice(0,10) !== date || date < today) errors.push('departure');
-  if (!Number.isInteger(Number(input.travelers)) || Number(input.travelers) < 1 || Number(input.travelers) > 200) errors.push('travelers');
-  if (String(input.notes || '').length > 1000) errors.push('notes');
+  if (!((typeof input.travelers === 'string' && /^[1-9][0-9]*$/.test(input.travelers)) || (typeof input.travelers === 'number' && Number.isInteger(input.travelers))) || Number(input.travelers) < 1 || Number(input.travelers) > 200) errors.push('travelers');
+  if (input.notes != null && typeof input.notes !== 'string' || String(input.notes || '').length > 1000) errors.push('notes');
   if (input.returnDate) {
     const end = new Date(input.returnDate + 'T00:00:00Z');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.returnDate) || !Number.isFinite(+end) || end.toISOString().slice(0,10) !== input.returnDate || input.returnDate < date) errors.push('returnDate');
