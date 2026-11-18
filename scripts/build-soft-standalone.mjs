@@ -14,7 +14,20 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
   if (destination === source || destination.startsWith(source + path.sep) || source.startsWith(destination + path.sep)) {
     throw new Error('Destination must be outside the source directory and must not be an ancestor of it');
   }
-  // Never follow an existing symlink in the output path: it could redirect writes into source or another site.\n  let segment = path.parse(destination).root;\n  for (const part of path.relative(segment, destination).split(path.sep).filter(Boolean)) {\n    segment = path.join(segment, part);\n    try {\n      if ((await lstat(segment)).isSymbolicLink()) {\n        throw new Error('Destination path must not contain symbolic links');\n      }\n    } catch (error) {\n      if (error.code !== 'ENOENT') throw error;\n    }\n  }\n  // Verify every referenced script, stylesheet, and local navigation target.
+  // Never follow an existing symlink in the output path: it could redirect
+  // writes into the source tree or another site.
+  let segment = path.parse(destination).root;
+  for (const part of path.relative(segment, destination).split(path.sep).filter(Boolean)) {
+    segment = path.join(segment, part);
+    try {
+      if ((await lstat(segment)).isSymbolicLink()) {
+        throw new Error('Destination path must not contain symbolic links');
+      }
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  }
+  // Verify every referenced script, stylesheet, and local navigation target.
   for (const file of softFiles) {
     const content = await readFile(path.join(source, file), 'utf8');
     if (!/\.html$/.test(file)) continue;
