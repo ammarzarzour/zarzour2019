@@ -41,6 +41,15 @@ test('rejects source-tree destinations and imports outside Soft', async () => {
   });
 });
 
+test('rejects output into an ancestor of the source without modifying source files', async () => {
+  await fixture(async ({ root, source }) => {
+    const original = await readFile(path.join(source, 'index.html'), 'utf8');
+    await assert.rejects(buildSoftStandalone(source, root), /separate from the source/);
+    assert.equal(await readFile(path.join(source, 'index.html'), 'utf8'), original);
+    assert.deepEqual((await readdir(root)).sort(), ['source']);
+  });
+});
+
 test('packages the real checked-in Soft site without Travel assets or changed bytes', async () => {
   const realSource = path.resolve('docs/soft');
   await fixture(async ({ destination }) => {
