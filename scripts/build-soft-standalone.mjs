@@ -12,7 +12,7 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
   const source = path.resolve(sourceDir);
   const destination = path.resolve(destinationDir);
   if (destination === source || destination.startsWith(source + path.sep) || source.startsWith(destination + path.sep)) {
-    throw new Error('Destination must be separate from the source directory and its ancestors');
+    throw new Error('Destination must be outside the source directory and must not be an ancestor of it');
   }
   // Verify every referenced script, stylesheet, and local navigation target.
   for (const file of softFiles) {
