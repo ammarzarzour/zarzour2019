@@ -123,3 +123,18 @@ test('permits safe rebuild over regular allowlisted destination files', async ()
     assert.equal(await readFile(path.join(destination, 'index.html'), 'utf8'), '<a href="brief.html">Brief</a>');
   });
 });
+
+test('rejects symlinked source directory and source ancestor without creating a release', async () => {
+  const { symlink } = await import('node:fs/promises');
+  await fixture(async ({ root, source, destination }) => {
+    const linkedSource = path.join(root, 'linked-source');
+    await symlink(source, linkedSource, 'dir');
+    await assert.rejects(buildSoftStandalone(linkedSource, destination), /Source path must not contain symbolic links/);
+    const linkedParent = path.join(root, 'linked-parent');
+    await symlink(root, linkedParent, 'dir');
+    await assert.rejects(buildSoftStandalone(path.join(linkedParent, 'source'), destination), /Source path must not contain symbolic links/);
+    await assert.rejects(readdir(destination), { code: 'ENOENT' });
+    assert.deepEqual((await readdir(source)).sort(), [...softFiles].sort());
+    assert.equal(await buildSoftStandalone(source, destination), softFiles.length);
+  });
+});
