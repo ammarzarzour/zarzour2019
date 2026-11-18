@@ -8,7 +8,9 @@ export function validIsoDate(value){
  const date=new Date(Date.UTC(y,m-1,d));
  return date.getUTCFullYear()===y&&date.getUTCMonth()===m-1&&date.getUTCDate()===d;
 }
-export function evaluateReturnStatus({status,expectedReturn,actualReturn=null},today){
+export function evaluateReturnStatus(record,today){
+ if(!record||typeof record!=='object'||Array.isArray(record))return {ok:false,reason:'invalid_record'};
+ const {status,expectedReturn,actualReturn=null}=record;
  if(!RETURN_STATES.includes(status))return {ok:false,reason:'invalid_status'};
  if(!validIsoDate(expectedReturn)||!validIsoDate(today))return {ok:false,reason:'invalid_date'};
  if(actualReturn!==null&&!validIsoDate(actualReturn))return {ok:false,reason:'invalid_actual_return'};
@@ -17,7 +19,9 @@ export function evaluateReturnStatus({status,expectedReturn,actualReturn=null},t
  const overdue=status!=='returned'&&status!=='planned'&&today>expectedReturn;
  return {ok:true,status,overdue,suggestedStatus:overdue&&status==='departed'?'return_due':status};
 }
-export function validateReturnTransition(from,to,{expectedReturn,actualReturn=null,today}={}){
+export function validateReturnTransition(from,to,options={}){
+ if(!options||typeof options!=='object'||Array.isArray(options))return {ok:false,reason:'invalid_input'};
+ const {expectedReturn,actualReturn=null,today}=options;
  if(!RETURN_STATES.includes(from)||!RETURN_STATES.includes(to))return {ok:false,reason:'invalid_status'};
  if(!NEXT[from].includes(to))return {ok:false,reason:'invalid_transition'};
  if(!validIsoDate(today)||!validIsoDate(expectedReturn))return {ok:false,reason:'invalid_date'};
