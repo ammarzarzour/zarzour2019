@@ -75,3 +75,13 @@ test('editing a reviewed request clears stale output and updates return-date min
 });
 
 
+
+test('rejects ambiguous traveler formats and non-text destination or notes',()=>{
+ for(const travelers of ['', ' ', ' 2', '2 ', '02', '2e0', '0x2', '+2', '2.0', true, null, [], {}])
+  assert.ok(validateRequest({...valid,travelers},'2026-11-08').includes('travelers'),String(travelers));
+ for(const destination of [2,{},[],true])
+  assert.ok(validateRequest({...valid,destination},'2026-11-08').includes('destination'));
+ for(const notes of [[],{},42])
+  assert.ok(validateRequest({...valid,notes},'2026-11-08').includes('notes'));
+ assert.deepEqual(validateRequest({...valid,travelers:'200'},'2026-11-08'),[]);
+});
