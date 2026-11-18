@@ -6,11 +6,15 @@ on:
     paths:
       - 'scripts/booking-lifecycle.mjs'
       - 'scripts/booking-lifecycle.test.mjs'
+      - 'scripts/booking-transition-audit.mjs'
+      - 'scripts/booking-transition-audit.test.mjs'
       - '.github/workflows/travel-booking-lifecycle.yml'
   pull_request:
     paths:
       - 'scripts/booking-lifecycle.mjs'
       - 'scripts/booking-lifecycle.test.mjs'
+      - 'scripts/booking-transition-audit.mjs'
+      - 'scripts/booking-transition-audit.test.mjs'
       - '.github/workflows/travel-booking-lifecycle.yml'
   workflow_dispatch:
 
@@ -27,4 +31,4 @@ jobs:
         with:
           node-version: '22'
       - name: Run pure booking lifecycle tests (no live data or payments)
-        run: node --test scripts/booking-lifecycle.test.mjs
+        run: node --test scripts/booking-lifecycle.test.mjs scripts/booking-transition-audit.test.mjs
