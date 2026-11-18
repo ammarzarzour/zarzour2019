@@ -27,6 +27,14 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
       if (error.code !== 'ENOENT') throw error;
     }
   }
+  // A symlinked allowlisted asset could copy data from outside the audited Soft tree.
+  // Reject non-regular files before reading or copying any package contents.
+  for (const file of softFiles) {
+    const stat = await lstat(path.join(source, file));
+    if (!stat.isFile() || stat.isSymbolicLink()) {
+      throw new Error(`${file}: source asset must be a regular file (no symbolic links)`);
+    }
+  }
   // Verify every referenced script, stylesheet, and local navigation target.
   for (const file of softFiles) {
     const content = await readFile(path.join(source, file), 'utf8');
