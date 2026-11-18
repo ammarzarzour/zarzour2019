@@ -59,6 +59,22 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
       }
     }
   }
+  // Refuse pre-existing output entries that could redirect writes or mix in
+  // unrelated Travel assets. Do not delete or overwrite unapproved files.
+  try {
+    const entries = await (await import('node:fs/promises')).readdir(destination);
+    for (const entry of entries) {
+      if (!softFiles.includes(entry)) {
+        throw new Error(`Destination contains unapproved file: ${entry}`);
+      }
+      const stat = await lstat(path.join(destination, entry));
+      if (!stat.isFile() || stat.isSymbolicLink()) {
+        throw new Error(`Destination asset must be a regular file: ${entry}`);
+      }
+    }
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
   await mkdir(destination, { recursive: true });
   for (const file of softFiles) await copyFile(path.join(source, file), path.join(destination, file));
   return softFiles.length;
