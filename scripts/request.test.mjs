@@ -107,3 +107,6 @@ test('missing or non-object trip payloads are rejected without exceptions',()=>{
  assert.deepEqual(validateRequest({},'2026-11-08'),['service','destination','departure','travelers']);
  assert.deepEqual(validateRequest(valid,'2026-11-08'),[]);
 });
+
+// Keep offline return-status rules in the existing CI test entrypoint.
+import './return-tracking.test.mjs';
