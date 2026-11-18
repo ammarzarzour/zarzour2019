@@ -26,3 +26,25 @@ export function validateReturnTransition(from,to,{expectedReturn,actualReturn=nu
  if(to==='return_due'&&today<=expectedReturn)return {ok:false,reason:'not_overdue'};
  return {ok:true};
 }
+
+/**
+ * Aggregate an offline queue without exposing traveler identities or changing records.
+ * Invalid records fail the entire summary to prevent misleading partial counts.
+ * Only status and expected/actual return dates are inspected.
+ */
+export function summarizeReturnQueue(records,today){
+ if(!Array.isArray(records)||!validIsoDate(today))return {ok:false,reason:'invalid_input'};
+ const counts=Object.fromEntries(RETURN_STATES.map(state=>[state,0]));
+ let overdue=0,needsReview=0;
+ for(const record of records){
+  if(!record||typeof record!=='object'||Array.isArray(record))return {ok:false,reason:'invalid_record'};
+  const result=evaluateReturnStatus({
+   status:record.status,expectedReturn:record.expectedReturn,actualReturn:record.actualReturn??null
+  },today);
+  if(!result.ok)return {ok:false,reason:'invalid_record'};
+  counts[result.status]++;
+  if(result.overdue)overdue++;
+  if(result.suggestedStatus==='return_due'||result.status==='follow_up')needsReview++;
+ }
+ return {ok:true,total:records.length,counts,overdue,needsReview};
+}
