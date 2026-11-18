@@ -77,3 +77,16 @@ planning preview only; it does not submit bookings or process payments.
 ## Offline traveler return tracking rules (2026-11-18)
 
 `scripts/return-tracking.mjs` provides pure functions to validate expected/actual return dates, flag overdue groups for review, and validate explicit status transitions (`planned`, `departed`, `return_due`, `follow_up`, `returned`). It does **not** store traveler information, automatically change statuses, contact travelers, connect to Supabase, or perform financial actions. A late return is only a suggested status until an authorized operator confirms it. Tests run via `node --test scripts/request.test.mjs` in the existing validation path, or individually via `node --test scripts/return-tracking.test.mjs`. This is a preparatory domain module, **not** a live return monitoring system. Production integration requires authenticated operators, approved RLS policies, an audit trail, and explicit consent/permissions before any real records are used.
+
+## Offline return queue summary (2026-11-18)
+
+`summarizeReturnQueue(records, today)` in `scripts/return-tracking.mjs` provides
+an **offline, read-only** aggregate for a future operator dashboard. It returns
+counts by state, overdue count and review count; it does not return names,
+identifiers, or source records. The entire summary fails if any record is
+invalid, rather than silently omitting records. The caller must provide an
+ISO calendar date and an array of status/date records. The function does not
+persist data, authenticate staff, issue alerts or make status changes.
+Run `node --test scripts/return-tracking.test.mjs` to check the new behavior.
+Do not connect real traveler data before approved authentication, RLS and
+audit logging are implemented and tested.
