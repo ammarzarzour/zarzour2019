@@ -27,6 +27,19 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
       if (error.code !== 'ENOENT') throw error;
     }
   }
+  // Reject symlinked source directories and ancestors as well as individual assets.
+  // Otherwise a directory link could silently substitute a different Soft tree.
+  let sourceSegment = path.parse(source).root;
+  for (const part of path.relative(sourceSegment, source).split(path.sep).filter(Boolean)) {
+    sourceSegment = path.join(sourceSegment, part);
+    const stat = await lstat(sourceSegment);
+    if (stat.isSymbolicLink()) {
+      throw new Error('Source path must not contain symbolic links');
+    }
+    if (!stat.isDirectory()) {
+      throw new Error('Source path must contain directories only');
+    }
+  }
   // A symlinked allowlisted asset could copy data from outside the audited Soft tree.
   // Reject non-regular files before reading or copying any package contents.
   for (const file of softFiles) {
