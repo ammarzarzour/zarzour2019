@@ -97,3 +97,13 @@ test('malformed date types never crash validation or produce a reviewed trip',()
   assert.ok(validateRequest({...valid,returnDate},'2026-11-08').includes('returnDate'));
  }
 });
+
+
+test('missing or non-object trip payloads are rejected without exceptions',()=>{
+ for(const payload of [null, undefined, false, 0, '', 'not a request', []]) {
+  assert.doesNotThrow(()=>validateRequest(payload,'2026-11-08'));
+  assert.deepEqual(validateRequest(payload,'2026-11-08'),['service','destination','departure','travelers']);
+ }
+ assert.deepEqual(validateRequest({},'2026-11-08'),['service','destination','departure','travelers']);
+ assert.deepEqual(validateRequest(valid,'2026-11-08'),[]);
+});
