@@ -78,3 +78,21 @@ test('rejects symlinked output directory and parent without touching source', as
     assert.deepEqual((await readdir(source)).sort(), [...softFiles].sort());
   });
 });
+
+test('rejects symlinked or non-regular allowlisted source assets before copying', async () => {
+  const { symlink, unlink } = await import('node:fs/promises');
+  await fixture(async ({ root, source, destination }) => {
+    const external = path.join(root, 'outside-secret.txt');
+    await writeFile(external, 'must never be copied');
+    const asset = path.join(source, 'brief.mjs');
+    await unlink(asset);
+    await symlink(external, asset);
+    await assert.rejects(buildSoftStandalone(source, destination), /source asset must be a regular file/);
+    await assert.rejects(readdir(destination), { code: 'ENOENT' });
+    assert.equal(await readFile(external, 'utf8'), 'must never be copied');
+    await unlink(asset);
+    await mkdir(asset);
+    await assert.rejects(buildSoftStandalone(source, destination), /source asset must be a regular file/);
+    await assert.rejects(readdir(destination), { code: 'ENOENT' });
+  });
+});
