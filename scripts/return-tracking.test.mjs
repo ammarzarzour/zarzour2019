@@ -46,3 +46,14 @@ test('reject invalid queues atomically rather than returning partial totals',()=
  assert.deepEqual(summarizeReturnQueue([],'bad-date'),{ok:false,reason:'invalid_input'});
  assert.equal(summarizeReturnQueue([],'2026-12-21').total,0);
 });
+
+test('malformed offline records and transition options return errors, not exceptions',()=>{
+ for(const invalid of [null,undefined,[],42,'invalid',false]){
+  assert.doesNotThrow(()=>evaluateReturnStatus(invalid,'2026-12-21'));
+  assert.deepEqual(evaluateReturnStatus(invalid,'2026-12-21'),{ok:false,reason:'invalid_record'});
+  assert.doesNotThrow(()=>validateReturnTransition('departed','returned',invalid));
+  assert.deepEqual(validateReturnTransition('departed','returned',invalid),{ok:false,reason:'invalid_input'});
+ }
+ assert.deepEqual(validateReturnTransition('departed','returned'),{ok:false,reason:'invalid_date'});
+ assert.deepEqual(evaluateReturnStatus({status:'departed',expectedReturn},'2026-12-21'),{ok:true,status:'departed',overdue:true,suggestedStatus:'return_due'});
+});
