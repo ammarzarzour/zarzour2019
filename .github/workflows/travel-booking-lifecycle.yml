@@ -1,0 +1,30 @@
+name: Travel booking lifecycle domain tests
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'scripts/booking-lifecycle.mjs'
+      - 'scripts/booking-lifecycle.test.mjs'
+      - '.github/workflows/travel-booking-lifecycle.yml'
+  pull_request:
+    paths:
+      - 'scripts/booking-lifecycle.mjs'
+      - 'scripts/booking-lifecycle.test.mjs'
+      - '.github/workflows/travel-booking-lifecycle.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run pure booking lifecycle tests (no live data or payments)
+        run: node --test scripts/booking-lifecycle.test.mjs
