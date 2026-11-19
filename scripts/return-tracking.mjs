@@ -15,6 +15,8 @@ export function evaluateReturnStatus(record,today){
  if(!validIsoDate(expectedReturn)||!validIsoDate(today))return {ok:false,reason:'invalid_date'};
  if(actualReturn!==null&&!validIsoDate(actualReturn))return {ok:false,reason:'invalid_actual_return'};
  if(status==='returned'&&actualReturn===null)return {ok:false,reason:'missing_actual_return'};
+ // A completed return cannot be evidenced by a date later than the review date.
+ if(status==='returned'&&actualReturn>today)return {ok:false,reason:'future_actual_return'};
  if(status!=='returned'&&actualReturn!==null)return {ok:false,reason:'unexpected_actual_return'};
  const overdue=status!=='returned'&&status!=='planned'&&today>expectedReturn;
  return {ok:true,status,overdue,suggestedStatus:overdue&&status==='departed'?'return_due':status};
