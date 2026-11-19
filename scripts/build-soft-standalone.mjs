@@ -54,7 +54,7 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
     if (!/\.html$/.test(file)) continue;
     // A quoted-only parser must not silently ignore unquoted HTML resource URLs.
     // Fail closed before copying any assets into the standalone package.
-    if (/\\b(?:href|src)\\s*=\\s*(?!["'])[^\\s>]+/i.test(content)) {
+    if (/\b(?:href|src)\s*=\s*(?!["'])[^\s>]+/i.test(content)) {
       throw new Error(`${file}: unquoted HTML resource attribute is not standalone`);
     }
     for (const [, attribute, value] of content.matchAll(/\b(href|src)=["']([^"']+)["']/gi)) {
