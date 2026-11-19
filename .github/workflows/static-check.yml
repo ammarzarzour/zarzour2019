@@ -32,6 +32,10 @@ jobs:
         # Run remaining checks after a test fails; retain the job's failure status.
         if: ${{ !cancelled() }}
         run: node --test scripts/request.test.mjs
+      - name: Test return tracking rules
+        # Validate traveler-return evidence and queue consistency without personal data.
+        if: ${{ !cancelled() }}
+        run: node --test scripts/return-tracking.test.mjs
       - name: Test operations dashboard model
         # Run remaining checks after a test fails; retain the job's failure status.
         if: ${{ !cancelled() }}
