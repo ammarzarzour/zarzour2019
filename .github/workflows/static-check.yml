@@ -44,6 +44,11 @@ jobs:
         # Run remaining checks after a test fails; retain the job's failure status.
         if: ${{ !cancelled() }}
         run: node --test scripts/soft-brief.test.mjs
+      - name: Test Zarzour Soft standalone packaging guard
+        # Run packaging isolation regressions on every Travel/Soft static validation,
+        # not only when the dedicated guard workflow's path filters match.
+        if: ${{ !cancelled() }}
+        run: node --test scripts/test-soft-spaced-attributes.mjs
       - name: Test partner verification register
         # Run remaining checks after a test fails; retain the job's failure status.
         if: ${{ !cancelled() }}
