@@ -138,3 +138,17 @@ test('rejects symlinked source directory and source ancestor without creating a 
     assert.equal(await buildSoftStandalone(source, destination), softFiles.length);
   });
 });
+
+test('rejects unquoted HTML resource attributes before publishing', async () => {
+  for (const html of [
+    '<script src=https://example.invalid/x.js></script>',
+    '<a href=../travel/index.html>Travel</a>',
+    '<a href=brief.html>Brief</a>'
+  ]) {
+    await fixture(async ({ source, destination }) => {
+      await writeFile(path.join(source, 'index.html'), html);
+      await assert.rejects(buildSoftStandalone(source, destination), /unquoted HTML resource attribute/);
+      await assert.rejects(readdir(destination), { code: 'ENOENT' });
+    });
+  }
+});
