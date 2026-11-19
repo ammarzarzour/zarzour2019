@@ -57,7 +57,7 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
     if (/\b(?:href|src)\s*=\s*(?!["'])[^\s>]+/i.test(content)) {
       throw new Error(`${file}: unquoted HTML resource attribute is not standalone`);
     }
-    for (const [, attribute, value] of content.matchAll(/\b(href|src)=["']([^"']+)["']/gi)) {
+    for (const [, attribute, value] of content.matchAll(/\b(href|src)\s*=\s*["']([^"']+)["']/gi)) {
       if (value.startsWith('#') || /^(?:mailto:|tel:)/i.test(value)) continue;
       if (/^(?:\/|\.\.\/|https?:|\/\/|data:|javascript:)/i.test(value)) {
         throw new Error(`${file}: external or parent-relative ${attribute} is not standalone: ${value}`);
