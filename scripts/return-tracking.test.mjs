@@ -26,6 +26,14 @@ test('inconsistent return records are rejected',()=>{
  assert.equal(evaluateReturnStatus({status:'departed',expectedReturn,actualReturn:'2026-12-21'},'2026-12-21').ok,false);
 });
 
+test('completed returns require evidence dated no later than review day',()=>{
+ const future=Object.freeze({status:'returned',expectedReturn:'2026-12-20',actualReturn:'2026-12-23'});
+ assert.deepEqual(evaluateReturnStatus(future,'2026-12-21'),{ok:false,reason:'future_actual_return'});
+ assert.deepEqual(summarizeReturnQueue([future],'2026-12-21'),{ok:false,reason:'invalid_record'});
+ assert.equal(future.actualReturn,'2026-12-23');
+ assert.equal(evaluateReturnStatus({...future,actualReturn:'2026-12-21'},'2026-12-21').ok,true);
+ assert.equal(evaluateReturnStatus({...future,actualReturn:'2026-12-19'},'2026-12-21').ok,true);
+});
 test('aggregate return queue counts without leaking personal fields',()=>{
  const records=[
   {status:'planned',expectedReturn:'2026-12-20',name:'PRIVATE'},
