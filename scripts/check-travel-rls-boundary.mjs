@@ -10,11 +10,21 @@ export function checkBoundary(sql) {
   const clean = sql.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\r\n]*/g, ' ');
   const violations = [];
   if (/\bcreate\s+policy\b/i.test(clean)) violations.push('RLS policy requires explicit authorization review');
-  if (/\balter\s+table\s+(?:if\s+exists\s+)?(?:public\.)?travel_[a-z_]+\s+disable\s+row\s+level\s+security\b/i.test(clean)) {
-    violations.push('Travel table RLS must remain enabled');
+  // Guard every table in the Travel database, not just travel_* tables.
+  const table = '(?:"?public"?\\.)?"?[a-z_][a-z_0-9]*"?';
+  if (new RegExp('\\balter\\s+table\\s+(?:if\\s+exists\\s+)?' + table + '\\s+disable\\s+row\\s+level\\s+security\\b', 'i').test(clean)) {
+    violations.push('Travel database table RLS must remain enabled');
   }
-  if (/\bgrant\s+(?:all(?:\s+privileges)?|select|insert|update|delete|truncate|references|trigger)(?:\s*,\s*(?:select|insert|update|delete))*\s+on\s+(?:table\s+|all\s+tables\s+in\s+schema\s+)?(?:public\.)?(?:travel_[a-z_]+|public)\b[\s\S]*?\bto\s+(?:anon|authenticated|public)\b/i.test(clean)) {
-    violations.push('Browser-role grants on Travel data are not approved');
+  // Match individual GRANT statements to handle multiple grantees safely.
+  const grants = clean.match(/\bgrant\b[\s\S]*?(?:;|$)/gi) ?? [];
+  for (const grant of grants) {
+    if (!/\bgrant\s+(?:all(?:\s+privileges)?|select|insert|update|delete|truncate|references|trigger)\b/i.test(grant)) continue;
+    const target = new RegExp('\\bon\\s+(?:all\\s+tables\\s+in\\s+schema\\s+"?public"?|(?:table\\s+)?' + table + ')(?=\\s|;|$)', 'i');
+    if (!target.test(grant)) continue;
+    const grantees = grant.split(/\bto\b/i).slice(1).join(' to ').split(/\bwith\s+grant\s+option\b/i)[0];
+    if (/\b(?:anon|authenticated|public)\b/i.test(grantees)) {
+      violations.push('Browser-role grants on Travel data are not approved');
+    }
   }
   return violations;
 }
@@ -26,6 +36,11 @@ if (process.argv.includes('--self-test')) {
     ['create policy open_access on public.travel_bookings for select using (true);', 1],
     ['alter table public.travel_bookings disable row level security;', 1],
     ['grant select on public.travel_bookings to anon;', 1],
+    ['alter table public.pilgrims disable row level security;', 1],
+    ['alter table "public"."marketing_campaigns" disable row level security;', 1],
+    ['grant select on public.pilgrims to authenticated;', 1],
+    ['grant select on all tables in schema public to service_role, authenticated;', 1],
+    ['grant select on public.travel_bookings to service_role;', 0],
   ];
   for (const [sql, expected] of cases) {
     if ((checkBoundary(sql).length > 0 ? 1 : 0) !== expected) throw new Error('Boundary self-test failed: ' + sql);
