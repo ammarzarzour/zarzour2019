@@ -101,6 +101,12 @@ jobs:
         # Run remaining checks after a test fails; retain the job's failure status.
         if: ${{ !cancelled() }}
         run: node --test scripts/accounting.test.mjs
+      - name: Guard deny-by-default Travel database access
+        # Do not open browser-role policies or grants before an explicit security review.
+        if: ${{ !cancelled() }}
+        run: |
+          node scripts/check-travel-rls-boundary.mjs --self-test
+          node scripts/check-travel-rls-boundary.mjs
       - name: Test secure operations schema
         # Run remaining checks after a test fails; retain the job's failure status.
         if: ${{ !cancelled() }}
