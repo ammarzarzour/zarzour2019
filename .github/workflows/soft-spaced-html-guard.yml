@@ -1,0 +1,29 @@
+name: Zarzour Soft spaced HTML resource guard
+on:
+  push:
+    paths:
+      - 'scripts/build-soft-standalone.mjs'
+      - 'scripts/test-soft-spaced-attributes.mjs'
+      - '.github/workflows/soft-spaced-html-guard.yml'
+  pull_request:
+    paths:
+      - 'scripts/build-soft-standalone.mjs'
+      - 'scripts/test-soft-spaced-attributes.mjs'
+      - '.github/workflows/soft-spaced-html-guard.yml'
+  workflow_dispatch:
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JavaScript syntax
+        run: |
+          node --check scripts/build-soft-standalone.mjs
+          node --check scripts/test-soft-spaced-attributes.mjs
+      - name: Run standalone HTML dependency regression
+        run: node --test scripts/test-soft-spaced-attributes.mjs
