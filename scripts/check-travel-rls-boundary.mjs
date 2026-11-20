@@ -9,7 +9,7 @@ export function checkBoundary(sql) {
   // Strip comments to avoid false positives from migration documentation.
   const clean = sql.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/--[^\r\n]*/g, ' ');
   const violations = [];
-  if (/\b(?:create|alter)\s+policy\b/i.test(clean)) violations.push('RLS policy creation or modification requires explicit authorization review');
+  if (/\b(?:create|alter|drop)\s+policy\b/i.test(clean)) violations.push('RLS policy creation, modification or removal requires explicit authorization review');
   // Guard every table in the Travel database, not just travel_* tables.
   const table = '(?:"?public"?\\.)?"?[a-z_][a-z_0-9]*"?';
   if (new RegExp('\\balter\\s+table\\s+(?:if\\s+exists\\s+)?(?:only\\s+)?' + table + '\\s+disable\\s+row\\s+level\\s+security\\b', 'i').test(clean)) {
@@ -43,6 +43,9 @@ if (process.argv.includes('--self-test')) {
     ['create policy open_access on public.travel_bookings for select using (true);', 1],
     ['alter policy existing_read on public.travel_bookings using (true);', 1],
     ['alter policy existing_read on public.travel_bookings to authenticated;', 1],
+    ['drop policy existing_read on public.travel_bookings;', 1],
+    ['drop policy if exists existing_read on public.pilgrims;', 1],
+    ['-- drop policy existing_read on public.travel_bookings\nselect 1;', 0],
     ['-- alter policy existing_read on public.travel_bookings\nselect 1;', 0],
     ['alter table public.travel_bookings disable row level security;', 1],
     ['alter table only public.travel_bookings disable row level security;', 1],
