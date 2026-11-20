@@ -12,7 +12,7 @@ export function checkBoundary(sql) {
   if (/\b(?:create|alter)\s+policy\b/i.test(clean)) violations.push('RLS policy creation or modification requires explicit authorization review');
   // Guard every table in the Travel database, not just travel_* tables.
   const table = '(?:"?public"?\\.)?"?[a-z_][a-z_0-9]*"?';
-  if (new RegExp('\\balter\\s+table\\s+(?:if\\s+exists\\s+)?' + table + '\\s+disable\\s+row\\s+level\\s+security\\b', 'i').test(clean)) {
+  if (new RegExp('\\balter\\s+table\\s+(?:if\\s+exists\\s+)?(?:only\\s+)?' + table + '\\s+disable\\s+row\\s+level\\s+security\\b', 'i').test(clean)) {
     violations.push('Travel database table RLS must remain enabled');
   }
   // Match individual GRANT statements to handle multiple grantees safely.
@@ -45,6 +45,9 @@ if (process.argv.includes('--self-test')) {
     ['alter policy existing_read on public.travel_bookings to authenticated;', 1],
     ['-- alter policy existing_read on public.travel_bookings\nselect 1;', 0],
     ['alter table public.travel_bookings disable row level security;', 1],
+    ['alter table only public.travel_bookings disable row level security;', 1],
+    ['alter table if exists only "public"."pilgrims" disable row level security;', 1],
+    ['alter table only public.travel_bookings enable row level security;', 0],
     ['grant select on public.travel_bookings to anon;', 1],
     ['alter table public.pilgrims disable row level security;', 1],
     ['alter table "public"."marketing_campaigns" disable row level security;', 1],
