@@ -40,3 +40,25 @@ test('allows declared local navigation with spaces around equals', async () => {
     assert.match(await readFile(path.join(output, 'index.html'), 'utf8'), /projects.html/);
   });
 });
+
+test('rejects external form action before writing standalone bundle', async () => {
+  await withFixture('<form action="https://example.invalid/collect"><button>Submit</button></form>', async (source, output) => {
+    await assert.rejects(buildSoftStandalone(source, output), /external or parent-relative action/);
+    await assert.rejects(readdir(output), { code: 'ENOENT' });
+  });
+});
+
+test('rejects unquoted form action and parent-relative button formaction', async () => {
+  await withFixture('<form action = https://example.invalid/collect></form>', async (source, output) => {
+    await assert.rejects(buildSoftStandalone(source, output), /unquoted HTML resource attribute/);
+  });
+  await withFixture('<button formaction="../travel/submit">Submit</button>', async (source, output) => {
+    await assert.rejects(buildSoftStandalone(source, output), /external or parent-relative formaction/);
+  });
+});
+
+test('allows explicitly local form destination', async () => {
+  await withFixture('<form action = "brief.html"><button>Continue</button></form>', async (source, output) => {
+    assert.equal(await buildSoftStandalone(source, output), softFiles.length);
+  });
+});
