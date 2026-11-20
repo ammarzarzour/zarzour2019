@@ -59,6 +59,10 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
     }
     // Forms must not silently submit standalone Soft drafts to Travel or external endpoints.
     for (const [, attribute, value] of content.matchAll(/\b(href|src|action|formaction)\s*=\s*["']([^"']+)["']/gi)) {
+      // mailto: and tel: are navigation-only; forms must never submit drafts via external handlers.
+      if ((attribute === 'action' || attribute === 'formaction') && /^(?:mailto:|tel:)/i.test(value)) {
+        throw new Error(`${file}: external form destination ${attribute} is not standalone: ${value}`);
+      }
       if (value.startsWith('#') || /^(?:mailto:|tel:)/i.test(value)) continue;
       if (/^(?:\/|\.\.\/|https?:|\/\/|data:|javascript:)/i.test(value)) {
         throw new Error(`${file}: external or parent-relative ${attribute} is not standalone: ${value}`);
