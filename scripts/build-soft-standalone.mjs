@@ -58,7 +58,8 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
       throw new Error(`${file}: unquoted HTML resource attribute is not standalone`);
     }
     // Forms must not silently submit standalone Soft drafts to Travel or external endpoints.
-    for (const [, attribute, value] of content.matchAll(/\b(href|src|action|formaction)\s*=\s*["']([^"']+)["']/gi)) {
+    for (const [, rawAttribute, value] of content.matchAll(/\b(href|src|action|formaction)\s*=\s*["']([^"']+)["']/gi)) {
+      const attribute = rawAttribute.toLowerCase();
       // mailto: and tel: are navigation-only; forms must never submit drafts via external handlers.
       if ((attribute === 'action' || attribute === 'formaction') && /^(?:mailto:|tel:)/i.test(value)) {
         throw new Error(`${file}: external form destination ${attribute} is not standalone: ${value}`);
