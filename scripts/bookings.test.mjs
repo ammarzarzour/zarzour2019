@@ -70,3 +70,23 @@ test("stored bookings with impossible dates are excluded", () => {
   const good = normalizeBooking(valid, "a");
   assert.deepEqual(safeBookings([good, { ...good, id: "b", reference: "BK-BAD", endDate: "2026-11-31" }]), [good]);
 });
+
+// Audit proposals are offline-only; regression coverage for strict UTC dates.
+test("booking transition audit rejects impossible and noncanonical UTC timestamps", async () => {
+  const { proposeBookingTransitionAudit } = await import("./booking-transition-audit.mjs");
+  const base = { currentStatus: "draft", nextStatus: "pending_review", reasonCode: "routine" };
+  for (const occurredAt of [
+    "2026-02-29T12:00:00Z", "2026-04-31T12:00:00Z", "2026-11-20T24:00:00Z",
+    "2026-11-20T12:60:00Z", "2026-11-20T12:00:60Z", "2026-11-20T12:00:00+00:00",
+    "2026-11-20T12:00:00.1234Z", "2026-11-20T12:00:00z",
+  ]) {
+    assert.throws(() => proposeBookingTransitionAudit({ ...base, occurredAt }), TypeError, occurredAt);
+  }
+  for (const occurredAt of ["2028-02-29T12:00:00Z", "2026-11-20T12:00:00.1Z", "2026-11-20T12:00:00.123Z"]) {
+    const audit = proposeBookingTransitionAudit({ ...base, occurredAt });
+    assert.equal(audit.occurredAt, occurredAt);
+    assert.equal(audit.persisted, false);
+    assert.equal(audit.authorized, false);
+    assert.ok(Object.isFrozen(audit));
+  }
+});
