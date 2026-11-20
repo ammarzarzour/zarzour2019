@@ -51,6 +51,11 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
   // Verify every referenced script, stylesheet, and local navigation target.
   for (const file of softFiles) {
     const content = await readFile(path.join(source, file), 'utf8');
+    // Standalone previews are local-only: block network APIs in both modules
+    // and inline HTML before any release files are copied.
+    if (/\b(?:fetch\s*\(|XMLHttpRequest\b|WebSocket\b|EventSource\s*\(|sendBeacon\s*\()/i.test(content)) {
+      throw new Error(`${file}: network behavior is forbidden in standalone Soft preview`);
+    }
     if (!/\.html$/.test(file)) continue;
     // A quoted-only parser must not silently ignore unquoted HTML navigation or form destinations.
     // Fail closed before copying any assets into the standalone package.
