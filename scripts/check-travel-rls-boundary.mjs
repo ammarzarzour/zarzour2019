@@ -26,6 +26,13 @@ export function checkBoundary(sql) {
       violations.push('Browser-role grants on Travel data are not approved');
     }
   }
+  // Future-table privileges bypass ordinary GRANT ... ON public.table checks.
+  const defaultGrants = clean.match(/\balter\s+default\s+privileges\b[^;]*;/gi) ?? [];
+  for (const statement of defaultGrants) {
+    if (!/\bgrant\s+(?:all(?:\s+privileges)?|select|insert|update|delete|truncate|references|trigger)\b/i.test(statement)) continue;
+    if (!/\bon\s+tables\s+to\s+[^;]*\b(?:anon|authenticated|public)\b/i.test(statement)) continue;
+    violations.push('Default privileges must not grant future Travel tables to browser roles');
+  }
   return violations;
 }
 
@@ -41,6 +48,10 @@ if (process.argv.includes('--self-test')) {
     ['grant select on public.pilgrims to authenticated;', 1],
     ['grant select on all tables in schema public to service_role, authenticated;', 1],
     ['grant select on public.travel_bookings to service_role;', 0],
+    ['alter default privileges in schema public grant select on tables to authenticated;', 1],
+    ['alter default privileges for role postgres in schema public grant all privileges on tables to anon;', 1],
+    ['alter default privileges in schema public grant select on tables to service_role;', 0],
+    ['alter default privileges in schema public grant usage on sequences to authenticated;', 0],
   ];
   for (const [sql, expected] of cases) {
     if ((checkBoundary(sql).length > 0 ? 1 : 0) !== expected) throw new Error('Boundary self-test failed: ' + sql);
