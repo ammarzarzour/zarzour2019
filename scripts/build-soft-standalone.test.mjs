@@ -152,3 +152,20 @@ test('rejects unquoted HTML resource attributes before publishing', async () => 
     });
   }
 });
+
+test('rejects persistent workers in JS and inline HTML before creating output', async () => {
+  for (const [file, code] of [
+    ['brief.mjs', 'navigator.serviceWorker.register("./worker.js")'],
+    ['projects.mjs', 'navigator.serviceWorker["register"]("./worker.js")'],
+    ['brief.mjs', 'navigator["serviceWorker"]["register"]("./worker.js")'],
+    ['index.html', '<script>new SharedWorker("./worker.js")</script>'],
+    ['brief.mjs', 'new Worker("./worker.js")'],
+    ['projects.mjs', 'importScripts("./worker.js")'],
+  ]) {
+    await fixture(async ({ source, destination }) => {
+      await writeFile(path.join(source, file), code);
+      await assert.rejects(buildSoftStandalone(source, destination), /worker registration is forbidden/);
+      await assert.rejects(readdir(destination), { code: 'ENOENT' });
+    });
+  }
+});
