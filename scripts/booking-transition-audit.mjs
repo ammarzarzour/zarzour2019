@@ -16,7 +16,15 @@ export function proposeBookingTransitionAudit({ currentStatus, nextStatus, retur
   if (nextStatus !== 'returned' && reasonCode === 'return_evidence_checked') {
     throw new Error('Return evidence reason code is reserved for verified return');
   }
-  if (typeof occurredAt !== 'string' || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(occurredAt) || !Number.isFinite(Date.parse(occurredAt)) || new Date(occurredAt).toISOString() !== new Date(Date.parse(occurredAt)).toISOString()) {
+  const timestamp = typeof occurredAt === 'string'
+    ? /^(\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d)(?:\.(\d{1,3}))?Z$/.exec(occurredAt)
+    : null;
+  if (!timestamp || timestamp[0] !== occurredAt) {
+    throw new TypeError('A valid UTC ISO timestamp is required');
+  }
+  const normalized = timestamp[1] + '.' + (timestamp[2] ?? '').padEnd(3, '0') + 'Z';
+  const parsed = new Date(normalized);
+  if (!Number.isFinite(parsed.getTime()) || parsed.toISOString() !== normalized) {
     throw new TypeError('A valid UTC ISO timestamp is required');
   }
   return Object.freeze({
