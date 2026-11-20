@@ -56,6 +56,11 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
     if (/\b(?:fetch\s*\(|XMLHttpRequest\b|WebSocket\b|EventSource\s*\(|sendBeacon\s*\()/i.test(content)) {
       throw new Error(`${file}: network behavior is forbidden in standalone Soft preview`);
     }
+    // A persistent service worker or worker thread would violate the static,
+    // offline-only Soft preview boundary, including bracket-property calls.
+    if (/\b(?:new\s+(?:SharedWorker|Worker)\s*\(|importScripts\s*\(|serviceWorker\s*(?:\.\s*register|\[\s*['"]register['"]\s*\])\s*\(|navigator\s*\[\s*['"]serviceWorker['"]\s*\]\s*(?:\.\s*register|\[\s*['"]register['"]\s*\])\s*\()/i.test(content)) {
+      throw new Error(`${file}: worker registration is forbidden in standalone Soft preview`);
+    }
     if (!/\.html$/.test(file)) continue;
     // A quoted-only parser must not silently ignore unquoted HTML navigation or form destinations.
     // Fail closed before copying any assets into the standalone package.
