@@ -59,14 +59,6 @@ jobs:
           for file in index.html brief.html brief.mjs brief-model.mjs projects.html projects.mjs projects-model.mjs; do
             cmp "docs/soft/$file" "dist/zarzour-soft/$file"
           done
-      - name: Upload independent Zarzour Soft preview
-        if: ${{ !cancelled() && success() }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: zarzour-soft-standalone-preview
-          path: dist/zarzour-soft/
-          if-no-files-found: error
-          retention-days: 14
       - name: Test partner verification register
         # Run remaining checks after a test fails; retain the job's failure status.
         if: ${{ !cancelled() }}
@@ -133,3 +125,11 @@ jobs:
         # Run remaining checks after a test fails; retain the job's failure status.
         if: ${{ !cancelled() }}
         run: node scripts/test-interactions.mjs
+      - name: Upload independent Zarzour Soft preview
+        if: ${{ !cancelled() && success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: zarzour-soft-standalone-preview
+          path: dist/zarzour-soft/
+          if-no-files-found: error
+          retention-days: 14
