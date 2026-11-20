@@ -31,11 +31,16 @@ jobs:
         run: node --test scripts/test-soft-spaced-attributes.mjs
       - name: Build actual independent package
         run: node scripts/build-soft-standalone.mjs
-      - name: Verify output is isolated
+      - name: Verify exact allowlisted files and byte-for-byte source parity
+        shell: bash
         run: |
-          test "$(find dist/zarzour-soft -maxdepth 1 -type f | wc -l)" -eq 7
-          test -f dist/zarzour-soft/index.html
-          test -f dist/zarzour-soft/projects.html
+          set -euo pipefail
+          test "$(find dist/zarzour-soft -mindepth 1 -type f | wc -l)" -eq 7
+          test "$(find dist/zarzour-soft -mindepth 1 | wc -l)" -eq 7
+          for file in index.html brief.html brief.mjs brief-model.mjs projects.html projects.mjs projects-model.mjs; do
+            test -f "dist/zarzour-soft/$file"
+            cmp "docs/soft/$file" "dist/zarzour-soft/$file"
+          done
       - name: Upload independently deployable Soft package
         uses: actions/upload-artifact@v4
         with:
