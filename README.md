@@ -90,3 +90,7 @@ persist data, authenticate staff, issue alerts or make status changes.
 Run `node --test scripts/return-tracking.test.mjs` to check the new behavior.
 Do not connect real traveler data before approved authentication, RLS and
 audit logging are implemented and tested.
+
+## Offline return deadline overview (2026-11-21)
+
+`summarizeReturnDeadlines(records, today)` in `scripts/return-tracking.mjs` produces identity-free counts of active trips that are overdue, due today, due within the next seven UTC calendar days, or due later. Planned and completed trips are excluded. Invalid records reject the entire batch. This is a pure, read-only planning helper, not an alert service or a production traveler tracker; it never stores personal data or changes a booking/status. Tests: `node --test scripts/return-tracking.test.mjs`. Live use still requires operator authentication, approved RLS, audit logging, and privacy review.
