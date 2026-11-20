@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validIsoDate,evaluateReturnStatus,validateReturnTransition,summarizeReturnQueue} from './return-tracking.mjs';
+import {validIsoDate,evaluateReturnStatus,validateReturnTransition,summarizeReturnQueue,summarizeReturnDeadlines} from './return-tracking.mjs';
 const expectedReturn='2026-12-20';
 test('strict ISO calendar dates',()=>{
  for(const d of ['2026-02-30','2026-13-01','2026-2-01',null,{},'1999-12-31'])assert.equal(validIsoDate(d),false);
@@ -66,4 +66,28 @@ test('malformed offline records and transition options return errors, not except
  assert.deepEqual(validateReturnTransition('departed','returned',undefined),{ok:false,reason:'invalid_date'});
  assert.deepEqual(validateReturnTransition('departed','returned'),{ok:false,reason:'invalid_date'});
  assert.deepEqual(evaluateReturnStatus({status:'departed',expectedReturn},'2026-12-21'),{ok:true,status:'departed',overdue:true,suggestedStatus:'return_due'});
+});
+
+test('deadline buckets use UTC calendar days and never expose identities',()=>{
+ const records=Object.freeze([
+  Object.freeze({status:'departed',expectedReturn:'2026-12-30',name:'PRIVATE'}),
+  Object.freeze({status:'return_due',expectedReturn:'2026-12-31'}),
+  Object.freeze({status:'follow_up',expectedReturn:'2027-01-01'}),
+  Object.freeze({status:'departed',expectedReturn:'2027-01-07'}),
+  Object.freeze({status:'departed',expectedReturn:'2027-01-08'}),
+  Object.freeze({status:'planned',expectedReturn:'2026-12-20'}),
+  Object.freeze({status:'returned',expectedReturn:'2026-12-20',actualReturn:'2026-12-30'})
+ ]);
+ const before=JSON.stringify(records);
+ const result=summarizeReturnDeadlines(records,'2026-12-31');
+ assert.deepEqual(result,{ok:true,overdue:1,dueToday:1,dueNextSevenDays:2,later:1});
+ assert.equal(JSON.stringify(records),before);
+ assert.equal(JSON.stringify(result).includes('PRIVATE'),false);
+});
+test('deadline summary rejects invalid batches atomically',()=>{
+ assert.deepEqual(summarizeReturnDeadlines([], '2026-12-31'),{ok:true,overdue:0,dueToday:0,dueNextSevenDays:0,later:0});
+ assert.deepEqual(summarizeReturnDeadlines({}, '2026-12-31'),{ok:false,reason:'invalid_input'});
+ assert.deepEqual(summarizeReturnDeadlines([], '2026-02-30'),{ok:false,reason:'invalid_input'});
+ assert.deepEqual(summarizeReturnDeadlines([{status:'departed',expectedReturn:'2026-12-30'},null], '2026-12-31'),{ok:false,reason:'invalid_record'});
+ assert.deepEqual(summarizeReturnDeadlines([{status:'returned',expectedReturn:'2026-12-30'}], '2026-12-31'),{ok:false,reason:'invalid_record'});
 });
