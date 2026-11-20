@@ -62,3 +62,21 @@ test('allows explicitly local form destination', async () => {
     assert.equal(await buildSoftStandalone(source, output), softFiles.length);
   });
 });
+
+test('rejects mailto and tel form submission handlers', async () => {
+  for (const html of [
+    '<form action="mailto:outside@example.invalid"></form>',
+    '<button formaction="tel:+123456">Submit</button>',
+  ]) {
+    await withFixture(html, async (source, output) => {
+      await assert.rejects(buildSoftStandalone(source, output), /external form destination/);
+      await assert.rejects(readdir(output), { code: 'ENOENT' });
+    });
+  }
+});
+
+test('still permits mailto navigation links', async () => {
+  await withFixture('<a href="mailto:contact@example.invalid">Contact</a>', async (source, output) => {
+    assert.equal(await buildSoftStandalone(source, output), softFiles.length);
+  });
+});
