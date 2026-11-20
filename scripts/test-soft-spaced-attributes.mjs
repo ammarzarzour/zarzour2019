@@ -98,3 +98,23 @@ test('allows mixed-case ordinary mailto navigation', async () => {
     assert.equal(await buildSoftStandalone(source, output), softFiles.length);
   });
 });
+
+test('rejects network APIs in standalone Soft modules before copying', async () => {
+  for (const code of ['fetch("/api")', 'new XMLHttpRequest()', 'new WebSocket("wss://example.invalid")', 'new EventSource("/events")', 'navigator.sendBeacon("/collect", "x")']) {
+    await withFixture('<a href="brief.html">Brief</a>', async (source, output) => {
+      await writeFile(path.join(source, 'brief.mjs'), code);
+      await assert.rejects(buildSoftStandalone(source, output), /network behavior is forbidden/);
+      await assert.rejects(readdir(output), { code: 'ENOENT' });
+    });
+  }
+});
+
+test('rejects network APIs in inline HTML but accepts local-only modules', async () => {
+  await withFixture('<script>fetch("/api")</script>', async (source, output) => {
+    await assert.rejects(buildSoftStandalone(source, output), /network behavior is forbidden/);
+  });
+  await withFixture('<a href="projects.html">Projects</a>', async (source, output) => {
+    await writeFile(path.join(source, 'brief.mjs'), 'export const offline = true;');
+    assert.equal(await buildSoftStandalone(source, output), softFiles.length);
+  });
+});
