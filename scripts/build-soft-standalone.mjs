@@ -52,12 +52,13 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
   for (const file of softFiles) {
     const content = await readFile(path.join(source, file), 'utf8');
     if (!/\.html$/.test(file)) continue;
-    // A quoted-only parser must not silently ignore unquoted HTML resource URLs.
+    // A quoted-only parser must not silently ignore unquoted HTML navigation or form destinations.
     // Fail closed before copying any assets into the standalone package.
-    if (/\b(?:href|src)\s*=\s*(?!["'])[^\s>]+/i.test(content)) {
+    if (/\b(?:href|src|action|formaction)\s*=\s*(?!["'])[^\s>]+/i.test(content)) {
       throw new Error(`${file}: unquoted HTML resource attribute is not standalone`);
     }
-    for (const [, attribute, value] of content.matchAll(/\b(href|src)\s*=\s*["']([^"']+)["']/gi)) {
+    // Forms must not silently submit standalone Soft drafts to Travel or external endpoints.
+    for (const [, attribute, value] of content.matchAll(/\b(href|src|action|formaction)\s*=\s*["']([^"']+)["']/gi)) {
       if (value.startsWith('#') || /^(?:mailto:|tel:)/i.test(value)) continue;
       if (/^(?:\/|\.\.\/|https?:|\/\/|data:|javascript:)/i.test(value)) {
         throw new Error(`${file}: external or parent-relative ${attribute} is not standalone: ${value}`);
