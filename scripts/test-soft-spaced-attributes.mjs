@@ -80,3 +80,21 @@ test('still permits mailto navigation links', async () => {
     assert.equal(await buildSoftStandalone(source, output), softFiles.length);
   });
 });
+
+test('rejects mixed-case mailto and tel form handlers before copying', async () => {
+  for (const html of [
+    '<form ACTION="mailto:outside@example.invalid"></form>',
+    '<button FormAction="tel:+123456">Submit</button>',
+  ]) {
+    await withFixture(html, async (source, output) => {
+      await assert.rejects(buildSoftStandalone(source, output), /external form destination/);
+      await assert.rejects(readdir(output), { code: 'ENOENT' });
+    });
+  }
+});
+
+test('allows mixed-case ordinary mailto navigation', async () => {
+  await withFixture('<a HREF="mailto:contact@example.invalid">Contact</a>', async (source, output) => {
+    assert.equal(await buildSoftStandalone(source, output), softFiles.length);
+  });
+});
