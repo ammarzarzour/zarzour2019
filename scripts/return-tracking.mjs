@@ -54,3 +54,28 @@ export function summarizeReturnQueue(records,today){
  }
  return {ok:true,total:records.length,counts,overdue,needsReview};
 }
+
+/**
+ * Read-only, identity-free deadline buckets for an operator's offline return queue.
+ * Planned and completed trips are excluded; every invalid record rejects the batch.
+ * No alerts, persistence, or status changes are performed.
+ */
+export function summarizeReturnDeadlines(records,today){
+ if(!Array.isArray(records)||!validIsoDate(today))return {ok:false,reason:'invalid_input'};
+ const summary={overdue:0,dueToday:0,dueNextSevenDays:0,later:0};
+ const todayMs=Date.parse(today+'T00:00:00Z');
+ for(const record of records){
+  if(!record||typeof record!=='object'||Array.isArray(record))return {ok:false,reason:'invalid_record'};
+  const result=evaluateReturnStatus({
+   status:record.status,expectedReturn:record.expectedReturn,actualReturn:record.actualReturn??null
+  },today);
+  if(!result.ok)return {ok:false,reason:'invalid_record'};
+  if(result.status==='returned'||result.status==='planned')continue;
+  const days=(Date.parse(record.expectedReturn+'T00:00:00Z')-todayMs)/86400000;
+  if(days<0)summary.overdue++;
+  else if(days===0)summary.dueToday++;
+  else if(days<=7)summary.dueNextSevenDays++;
+  else summary.later++;
+ }
+ return {ok:true,...summary};
+}
