@@ -3,6 +3,7 @@ on:
   push:
     paths:
       - 'docs/soft/**'
+      - 'docs/soft-standalone-deployment.md'
       - 'scripts/build-soft-standalone.mjs'
       - 'scripts/build-soft-standalone.test.mjs'
       - 'scripts/test-soft-spaced-attributes.mjs'
@@ -10,6 +11,7 @@ on:
   pull_request:
     paths:
       - 'docs/soft/**'
+      - 'docs/soft-standalone-deployment.md'
       - 'scripts/build-soft-standalone.mjs'
       - 'scripts/build-soft-standalone.test.mjs'
       - 'scripts/test-soft-spaced-attributes.mjs'
