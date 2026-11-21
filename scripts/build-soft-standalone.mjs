@@ -44,8 +44,8 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
   // Reject non-regular files before reading or copying any package contents.
   for (const file of softFiles) {
     const stat = await lstat(path.join(source, file));
-    if (!stat.isFile() || stat.isSymbolicLink()) {
-      throw new Error(`${file}: source asset must be a regular file (no symbolic links)`);
+    if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1) {
+      throw new Error(`${file}: source asset must be a regular, unlinked file (no symbolic or hard links)`);
     }
   }
   // Verify every referenced script, stylesheet, and local navigation target.
@@ -102,8 +102,8 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
         throw new Error(`Destination contains unapproved file: ${entry}`);
       }
       const stat = await lstat(path.join(destination, entry));
-      if (!stat.isFile() || stat.isSymbolicLink()) {
-        throw new Error(`Destination asset must be a regular file: ${entry}`);
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1) {
+        throw new Error(`Destination asset must be a regular, unlinked file: ${entry}`);
       }
     }
   } catch (error) {
