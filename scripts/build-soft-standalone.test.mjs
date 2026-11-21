@@ -169,3 +169,31 @@ test('rejects persistent workers in JS and inline HTML before creating output', 
     });
   }
 });
+
+
+test('rejects hard-linked source assets before creating any output', async () => {
+  const { link, unlink } = await import('node:fs/promises');
+  await fixture(async ({ root, source, destination }) => {
+    const protectedFile = path.join(root, 'protected-source.txt');
+    await writeFile(protectedFile, 'protected source bytes');
+    const asset = path.join(source, 'brief.mjs');
+    await unlink(asset);
+    await link(protectedFile, asset);
+    await assert.rejects(buildSoftStandalone(source, destination), /source asset must be a regular, unlinked file/);
+    await assert.rejects(readdir(destination), { code: 'ENOENT' });
+    assert.equal(await readFile(protectedFile, 'utf8'), 'protected source bytes');
+  });
+});
+
+test('rejects hard-linked destination assets without overwriting external files', async () => {
+  const { link } = await import('node:fs/promises');
+  await fixture(async ({ root, source, destination }) => {
+    await mkdir(destination);
+    const protectedFile = path.join(root, 'protected-destination.txt');
+    await writeFile(protectedFile, 'protected destination bytes');
+    await link(protectedFile, path.join(destination, 'index.html'));
+    await assert.rejects(buildSoftStandalone(source, destination), /Destination asset must be a regular, unlinked file/);
+    assert.equal(await readFile(protectedFile, 'utf8'), 'protected destination bytes');
+    assert.deepEqual((await readdir(destination)).sort(), ['index.html']);
+  });
+});
