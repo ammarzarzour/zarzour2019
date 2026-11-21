@@ -6,6 +6,7 @@ on:
       - 'docs/soft-standalone-deployment.md'
       - 'scripts/build-soft-standalone.mjs'
       - 'scripts/build-soft-standalone.test.mjs'
+      - 'scripts/projects-model.test.mjs'
       - 'scripts/test-soft-spaced-attributes.mjs'
       - '.github/workflows/soft-standalone.yml'
   pull_request:
@@ -14,6 +15,7 @@ on:
       - 'docs/soft-standalone-deployment.md'
       - 'scripts/build-soft-standalone.mjs'
       - 'scripts/build-soft-standalone.test.mjs'
+      - 'scripts/projects-model.test.mjs'
       - 'scripts/test-soft-spaced-attributes.mjs'
       - '.github/workflows/soft-standalone.yml'
   workflow_dispatch:
@@ -37,6 +39,8 @@ jobs:
           node --check docs/soft/projects-model.mjs
       - name: Test isolated packaging and checked-in assets
         run: node --test scripts/build-soft-standalone.test.mjs
+      - name: Test standalone project model validation
+        run: node --test scripts/projects-model.test.mjs
       - name: Test standalone HTML form and network boundaries
         run: node --test scripts/test-soft-spaced-attributes.mjs
       - name: Build actual independent package
