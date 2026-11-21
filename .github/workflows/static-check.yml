@@ -54,6 +54,10 @@ jobs:
         # Verify destination isolation and allowlisted assets in the full validation pipeline.
         if: ${{ !cancelled() }}
         run: node --test scripts/build-soft-standalone.test.mjs
+      - name: Test Zarzour Soft project data integrity
+        # Run project validation and malformed-store regressions in the full static pipeline.
+        if: ${{ !cancelled() }}
+        run: node --test scripts/projects-model.test.mjs
       - name: Build independently deployable Zarzour Soft bundle
         # This is a portable preview artifact, not a production deployment.
         if: ${{ !cancelled() }}
