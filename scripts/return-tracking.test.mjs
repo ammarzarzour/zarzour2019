@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validIsoDate,evaluateReturnStatus,validateReturnTransition,summarizeReturnQueue,summarizeReturnDeadlines} from './return-tracking.mjs';
+import {validIsoDate,evaluateReturnStatus,validateReturnTransition,summarizeReturnQueue,summarizeReturnDeadlines,summarizeOverdueEscalations} from './return-tracking.mjs';
 const expectedReturn='2026-12-20';
 test('strict ISO calendar dates',()=>{
  for(const d of ['2026-02-30','2026-13-01','2026-2-01',null,{},'1999-12-31'])assert.equal(validIsoDate(d),false);
@@ -90,4 +90,31 @@ test('deadline summary rejects invalid batches atomically',()=>{
  assert.deepEqual(summarizeReturnDeadlines([], '2026-02-30'),{ok:false,reason:'invalid_input'});
  assert.deepEqual(summarizeReturnDeadlines([{status:'departed',expectedReturn:'2026-12-30'},null], '2026-12-31'),{ok:false,reason:'invalid_record'});
  assert.deepEqual(summarizeReturnDeadlines([{status:'returned',expectedReturn:'2026-12-30'}], '2026-12-31'),{ok:false,reason:'invalid_record'});
+});
+
+test('overdue escalation tiers respect UTC calendar boundaries and privacy',()=>{
+ const records=Object.freeze([
+  Object.freeze({status:'departed',expectedReturn:'2026-12-30',name:'PRIVATE'}),
+  Object.freeze({status:'return_due',expectedReturn:'2026-12-24'}),
+  Object.freeze({status:'follow_up',expectedReturn:'2026-12-23'}),
+  Object.freeze({status:'departed',expectedReturn:'2026-12-01'}),
+  Object.freeze({status:'departed',expectedReturn:'2026-11-30'}),
+  Object.freeze({status:'departed',expectedReturn:'2026-11-01'}),
+  Object.freeze({status:'departed',expectedReturn:'2026-10-31'}),
+  Object.freeze({status:'planned',expectedReturn:'2026-10-01'}),
+  Object.freeze({status:'returned',expectedReturn:'2026-10-01',actualReturn:'2026-12-30'}),
+  Object.freeze({status:'departed',expectedReturn:'2026-12-31'})
+ ]);
+ const before=JSON.stringify(records);
+ const result=summarizeOverdueEscalations(records,'2026-12-31');
+ assert.deepEqual(result,{ok:true,oneToSevenDays:2,eightToThirtyDays:2,overThirtyDays:2});
+ assert.equal(JSON.stringify(records),before);
+ assert.equal(JSON.stringify(result).includes('PRIVATE'),false);
+});
+test('overdue escalation refuses malformed batches without partial counts',()=>{
+ assert.deepEqual(summarizeOverdueEscalations([], '2026-12-31'),{ok:true,oneToSevenDays:0,eightToThirtyDays:0,overThirtyDays:0});
+ assert.deepEqual(summarizeOverdueEscalations([], '2026-02-30'),{ok:false,reason:'invalid_input'});
+ assert.deepEqual(summarizeOverdueEscalations({}, '2026-12-31'),{ok:false,reason:'invalid_input'});
+ assert.deepEqual(summarizeOverdueEscalations([{status:'departed',expectedReturn:'2026-12-30'},null], '2026-12-31'),{ok:false,reason:'invalid_record'});
+ assert.deepEqual(summarizeOverdueEscalations([{status:'returned',expectedReturn:'2026-12-30'}], '2026-12-31'),{ok:false,reason:'invalid_record'});
 });
