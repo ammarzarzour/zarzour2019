@@ -118,3 +118,34 @@ test('overdue escalation refuses malformed batches without partial counts',()=>{
  assert.deepEqual(summarizeOverdueEscalations([{status:'departed',expectedReturn:'2026-12-30'},null], '2026-12-31'),{ok:false,reason:'invalid_record'});
  assert.deepEqual(summarizeOverdueEscalations([{status:'returned',expectedReturn:'2026-12-30'}], '2026-12-31'),{ok:false,reason:'invalid_record'});
 });
+
+test('return deadline and escalation buckets stay consistent across leap day and year boundary',()=>{
+ const leap=[
+  {status:'departed',expectedReturn:'2028-02-28'},
+  {status:'return_due',expectedReturn:'2028-02-29'},
+  {status:'follow_up',expectedReturn:'2028-03-01'},
+  {status:'departed',expectedReturn:'2028-03-08'},
+  {status:'planned',expectedReturn:'2028-02-01'},
+  {status:'returned',expectedReturn:'2028-02-01',actualReturn:'2028-02-29'}
+ ];
+ assert.deepEqual(summarizeReturnDeadlines(leap,'2028-02-29'),{
+  ok:true,overdue:1,dueToday:1,dueNextSevenDays:1,later:1
+ });
+ assert.deepEqual(summarizeOverdueEscalations(leap,'2028-02-29'),{
+  ok:true,oneToSevenDays:1,eightToThirtyDays:0,overThirtyDays:0
+ });
+ const yearEnd=[
+  {status:'departed',expectedReturn:'2026-12-31'},
+  {status:'return_due',expectedReturn:'2026-12-25'},
+  {status:'follow_up',expectedReturn:'2026-12-24'},
+  {status:'departed',expectedReturn:'2026-12-02'},
+  {status:'departed',expectedReturn:'2026-12-01'},
+  {status:'departed',expectedReturn:'2027-01-01'}
+ ];
+ assert.deepEqual(summarizeReturnDeadlines(yearEnd,'2027-01-01'),{
+  ok:true,overdue:5,dueToday:1,dueNextSevenDays:0,later:0
+ });
+ assert.deepEqual(summarizeOverdueEscalations(yearEnd,'2027-01-01'),{
+  ok:true,oneToSevenDays:2,eightToThirtyDays:2,overThirtyDays:1
+ });
+});
