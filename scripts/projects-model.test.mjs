@@ -28,3 +28,16 @@ test('valid projects still pass validation and can be added', () => {
 test('stored malformed projects are skipped safely', () => {
   assert.deepEqual(safeProjects([null, [], 'invalid']), []);
 });
+
+test('malformed optimistic concurrency snapshots return conflict without throwing', () => {
+  const existing = upsertProject([], valid, 'test-project').items;
+  for (const expected of [null, false, [], 'invalid', { ...valid, reference: null }]) {
+    const result = upsertProject(existing, { ...valid, notes: 'changed' }, 'test-project', expected);
+    assert.deepEqual(result.errors, ['conflict']);
+    assert.equal(result.items, existing);
+  }
+  const malformedExisting = [{ ...existing[0], reference: null }];
+  const result = upsertProject(malformedExisting, valid, 'test-project', valid);
+  assert.deepEqual(result.errors, ['conflict']);
+  assert.equal(result.items, malformedExisting);
+});
