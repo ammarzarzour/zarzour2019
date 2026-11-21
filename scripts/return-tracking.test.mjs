@@ -162,6 +162,7 @@ test('unified operational snapshot reconciles overdue totals without identities 
  const snapshot=JSON.stringify(records);
  const result=summarizeReturnOperations(records,'2026-12-31');
  assert.equal(result.ok,true);
+ assert.equal(result.asOfDate,'2026-12-31');
  assert.equal(result.queue.total,6);
  assert.equal(result.queue.overdue,3);
  assert.deepEqual(result.deadlines,{ok:true,overdue:3,dueToday:0,dueNextSevenDays:1,later:0});
@@ -170,4 +171,16 @@ test('unified operational snapshot reconciles overdue totals without identities 
  assert.equal(JSON.stringify(records),snapshot);
  assert.deepEqual(summarizeReturnOperations([...records,null],'2026-12-31'),{ok:false,reason:'invalid_record'});
  assert.deepEqual(summarizeReturnOperations([], 'invalid'),{ok:false,reason:'invalid_input'});
+});
+
+test('operational snapshots carry their explicit review date, not system time',()=>{
+ const records=Object.freeze([Object.freeze({status:'departed',expectedReturn:'2026-12-30'})]);
+ const first=summarizeReturnOperations(records,'2026-12-30');
+ const next=summarizeReturnOperations(records,'2026-12-31');
+ assert.equal(first.asOfDate,'2026-12-30');
+ assert.equal(next.asOfDate,'2026-12-31');
+ assert.equal(first.queue.overdue,0);
+ assert.equal(next.queue.overdue,1);
+ assert.equal(JSON.stringify(first).includes('name'),false);
+ assert.deepEqual(summarizeReturnOperations(records,'2026-02-30'),{ok:false,reason:'invalid_input'});
 });
