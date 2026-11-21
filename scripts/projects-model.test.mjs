@@ -50,3 +50,18 @@ test('malformed stored collections are rejected without mutations or exceptions'
     assert.equal(result.items, items);
   }
 });
+
+test('duplicate stored ids or references cannot be updated ambiguously', () => {
+  const first = { ...valid, id: 'soft-1' };
+  const duplicateId = { ...valid, id: 'soft-1', reference: 'SOFT-002' };
+  const duplicateReference = { ...valid, id: 'soft-2', reference: 'soft-001' };
+  for (const items of [[first, duplicateId], [first, duplicateReference]]) {
+    const result = upsertProject(items, { ...valid, notes: 'changed' }, 'soft-1');
+    assert.deepEqual(result.errors, ['projectStore']);
+    assert.equal(result.items, items);
+  }
+  const blankId = [{ ...valid, id: '   ' }];
+  const result = upsertProject(blankId, valid, 'soft-1');
+  assert.deepEqual(result.errors, ['projectStore']);
+  assert.equal(result.items, blankId);
+});
