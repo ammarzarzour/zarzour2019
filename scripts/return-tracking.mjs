@@ -120,5 +120,6 @@ export function summarizeReturnOperations(records,today){
     queue.overdue!==escalations.oneToSevenDays+escalations.eightToThirtyDays+escalations.overThirtyDays){
   return {ok:false,reason:'inconsistent_summary'};
  }
- return {ok:true,queue,deadlines,escalations};
+ // Anchor every snapshot to its UTC review date for audit-safe comparisons.
+ return {ok:true,asOfDate:today,queue,deadlines,escalations};
 }
