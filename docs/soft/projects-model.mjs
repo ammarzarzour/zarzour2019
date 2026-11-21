@@ -10,7 +10,7 @@ export function projectMetrics(items,today){const open=items.filter(x=>x.status!
 export function filterProjects(items,{query="",type="",status=""}={}){const needle=query.trim().toLocaleLowerCase();return items.filter(x=>(!type||x.type===type)&&(!status||x.status===status)&&(!needle||x.reference.toLocaleLowerCase().includes(needle)||x.notes.toLocaleLowerCase().includes(needle)))}
 
 export function upsertProject(items,input,id,expected){
- if(expected!==undefined){const current=items.find(x=>x.id===id);if(!current||JSON.stringify(normalizeProject(current,id))!==JSON.stringify(normalizeProject(expected,id)))return {errors:["conflict"],items:items};}
+ if(expected!==undefined){const current=items.find(x=>x.id===id);if(!current||validateProject(current).length||validateProject(expected).length||JSON.stringify(normalizeProject(current,id))!==JSON.stringify(normalizeProject(expected,id)))return {errors:["conflict"],items:items};}
  const errors=validateProject(input);if(errors.length)return {errors,items};
  const item=normalizeProject(input,id);
  if(items.some(x=>x.id!==id&&x.reference.trim().toUpperCase()===item.reference.toUpperCase()))return {errors:["duplicateReference"],items};
