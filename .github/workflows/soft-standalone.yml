@@ -22,6 +22,8 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    # Bound the standalone preview validation if a test or build hangs.
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
