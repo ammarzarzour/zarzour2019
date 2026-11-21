@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {validIsoDate,evaluateReturnStatus,validateReturnTransition,summarizeReturnQueue,summarizeReturnDeadlines,summarizeOverdueEscalations} from './return-tracking.mjs';
+import {validIsoDate,evaluateReturnStatus,validateReturnTransition,summarizeReturnQueue,summarizeReturnDeadlines,summarizeOverdueEscalations,summarizeReturnOperations} from './return-tracking.mjs';
 const expectedReturn='2026-12-20';
 test('strict ISO calendar dates',()=>{
  for(const d of ['2026-02-30','2026-13-01','2026-2-01',null,{},'1999-12-31'])assert.equal(validIsoDate(d),false);
@@ -148,4 +148,26 @@ test('return deadline and escalation buckets stay consistent across leap day and
  assert.deepEqual(summarizeOverdueEscalations(yearEnd,'2027-01-01'),{
   ok:true,oneToSevenDays:2,eightToThirtyDays:2,overThirtyDays:1
  });
+});
+
+test('unified operational snapshot reconciles overdue totals without identities or mutation',()=>{
+ const records=Object.freeze([
+  Object.freeze({status:'departed',expectedReturn:'2026-12-30',name:'SECRET'}),
+  Object.freeze({status:'follow_up',expectedReturn:'2026-12-20'}),
+  Object.freeze({status:'return_due',expectedReturn:'2026-11-20'}),
+  Object.freeze({status:'departed',expectedReturn:'2027-01-01'}),
+  Object.freeze({status:'planned',expectedReturn:'2026-12-01'}),
+  Object.freeze({status:'returned',expectedReturn:'2026-12-01',actualReturn:'2026-12-30'})
+ ]);
+ const snapshot=JSON.stringify(records);
+ const result=summarizeReturnOperations(records,'2026-12-31');
+ assert.equal(result.ok,true);
+ assert.equal(result.queue.total,6);
+ assert.equal(result.queue.overdue,3);
+ assert.deepEqual(result.deadlines,{ok:true,overdue:3,dueToday:0,dueNextSevenDays:1,later:0});
+ assert.deepEqual(result.escalations,{ok:true,oneToSevenDays:1,eightToThirtyDays:1,overThirtyDays:1});
+ assert.equal(JSON.stringify(result).includes('SECRET'),false);
+ assert.equal(JSON.stringify(records),snapshot);
+ assert.deepEqual(summarizeReturnOperations([...records,null],'2026-12-31'),{ok:false,reason:'invalid_record'});
+ assert.deepEqual(summarizeReturnOperations([], 'invalid'),{ok:false,reason:'invalid_input'});
 });
