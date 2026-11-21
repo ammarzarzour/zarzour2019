@@ -38,6 +38,15 @@ test('malformed optimistic concurrency snapshots return conflict without throwin
   }
   const malformedExisting = [{ ...existing[0], reference: null }];
   const result = upsertProject(malformedExisting, valid, 'test-project', valid);
-  assert.deepEqual(result.errors, ['conflict']);
+  assert.deepEqual(result.errors, ['projectStore']);
   assert.equal(result.items, malformedExisting);
+});
+
+test('malformed stored collections are rejected without mutations or exceptions', () => {
+  const invalidCollections = [null, undefined, {}, [null], [[]], ['invalid'], [{ id: 'broken', reference: null }]];
+  for (const items of invalidCollections) {
+    const result = upsertProject(items, valid, 'test-project');
+    assert.deepEqual(result.errors, ['projectStore']);
+    assert.equal(result.items, items);
+  }
 });
