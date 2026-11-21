@@ -29,6 +29,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Syntax-check standalone browser modules
+        run: |
+          node --check docs/soft/brief.mjs
+          node --check docs/soft/brief-model.mjs
+          node --check docs/soft/projects.mjs
+          node --check docs/soft/projects-model.mjs
       - name: Test isolated packaging and checked-in assets
         run: node --test scripts/build-soft-standalone.test.mjs
       - name: Test standalone HTML form and network boundaries
