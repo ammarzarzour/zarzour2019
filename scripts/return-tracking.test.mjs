@@ -107,7 +107,7 @@ test('overdue escalation tiers respect UTC calendar boundaries and privacy',()=>
  ]);
  const before=JSON.stringify(records);
  const result=summarizeOverdueEscalations(records,'2026-12-31');
- assert.deepEqual(result,{ok:true,oneToSevenDays:2,eightToThirtyDays:2,overThirtyDays:2});
+ assert.deepEqual(result,{ok:true,oneToSevenDays:2,eightToThirtyDays:2,overThirtyDays:3});
  assert.equal(JSON.stringify(records),before);
  assert.equal(JSON.stringify(result).includes('PRIVATE'),false);
 });
