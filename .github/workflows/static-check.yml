@@ -50,6 +50,10 @@ jobs:
         # not only when the dedicated guard workflow's path filters match.
         if: ${{ !cancelled() }}
         run: node --test scripts/test-soft-spaced-attributes.mjs
+      - name: Test independent Zarzour Soft packaging safety
+        # Verify destination isolation and allowlisted assets in the full validation pipeline.
+        if: ${{ !cancelled() }}
+        run: node --test scripts/build-soft-standalone.test.mjs
       - name: Build independently deployable Zarzour Soft bundle
         # This is a portable preview artifact, not a production deployment.
         if: ${{ !cancelled() }}
