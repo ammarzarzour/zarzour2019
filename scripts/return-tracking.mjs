@@ -103,3 +103,22 @@ export function summarizeOverdueEscalations(records,today){
  }
  return {ok:true,...tiers};
 }
+
+/**
+ * One read-only operational snapshot for a future operator dashboard.
+ * Reuses the validated summaries; no identities, network access or writes.
+ * Any invalid record rejects the whole snapshot instead of partial reporting.
+ */
+export function summarizeReturnOperations(records,today){
+ const queue=summarizeReturnQueue(records,today);
+ if(!queue.ok)return queue;
+ const deadlines=summarizeReturnDeadlines(records,today);
+ if(!deadlines.ok)return deadlines;
+ const escalations=summarizeOverdueEscalations(records,today);
+ if(!escalations.ok)return escalations;
+ if(queue.overdue!==deadlines.overdue||
+    queue.overdue!==escalations.oneToSevenDays+escalations.eightToThirtyDays+escalations.overThirtyDays){
+  return {ok:false,reason:'inconsistent_summary'};
+ }
+ return {ok:true,queue,deadlines,escalations};
+}
