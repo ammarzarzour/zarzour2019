@@ -79,3 +79,27 @@ export function summarizeReturnDeadlines(records,today){
  }
  return {ok:true,...summary};
 }
+
+/**
+ * Read-only overdue escalation tiers for operator review. No traveler identifiers,
+ * notifications, database writes, or automatic state changes.
+ * Every invalid record fails the whole batch, including excluded statuses.
+ */
+export function summarizeOverdueEscalations(records,today){
+ if(!Array.isArray(records)||!validIsoDate(today))return {ok:false,reason:'invalid_input'};
+ const tiers={oneToSevenDays:0,eightToThirtyDays:0,overThirtyDays:0};
+ const todayMs=Date.parse(today+'T00:00:00Z');
+ for(const record of records){
+  if(!record||typeof record!=='object'||Array.isArray(record))return {ok:false,reason:'invalid_record'};
+  const result=evaluateReturnStatus({
+   status:record.status,expectedReturn:record.expectedReturn,actualReturn:record.actualReturn??null
+  },today);
+  if(!result.ok)return {ok:false,reason:'invalid_record'};
+  if(!result.overdue)continue;
+  const days=(todayMs-Date.parse(record.expectedReturn+'T00:00:00Z'))/86400000;
+  if(days<=7)tiers.oneToSevenDays++;
+  else if(days<=30)tiers.eightToThirtyDays++;
+  else tiers.overThirtyDays++;
+ }
+ return {ok:true,...tiers};
+}
