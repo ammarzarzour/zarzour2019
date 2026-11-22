@@ -7,14 +7,19 @@ This document covers the **standalone frontend preview**, not a production CRM, 
 From the repository root:
 
 ```sh
+node --check docs/soft/brief.mjs
+node --check docs/soft/brief-model.mjs
+node --check docs/soft/projects.mjs
+node --check docs/soft/projects-model.mjs
 node --test scripts/build-soft-standalone.test.mjs
+node --test scripts/projects-model.test.mjs
 node --test scripts/test-soft-spaced-attributes.mjs
 node scripts/build-soft-standalone.mjs
 ```
 
 The deployable directory is `dist/zarzour-soft/`. It must contain **exactly** these seven top-level files: `index.html`, `brief.html`, `brief.mjs`, `brief-model.mjs`, `projects.html`, `projects.mjs`, `projects-model.mjs`. Do not deploy the parent travel site or its scripts as part of this package.
 
-The dedicated [Zarzour Soft workflow](../../.github/workflows/soft-standalone.yml) runs the tests, builds the package, verifies the seven files against the checked-in source, and uploads the `zarzour-soft-standalone` artifact. A workflow definition is **not** evidence of a successful run; check the actual run conclusion and artifact before deploying.
+The dedicated [Zarzour Soft workflow](../../.github/workflows/soft-standalone.yml) runs the same syntax checks and three test suites shown above, builds the package, verifies the seven files against the checked-in source, and uploads the `zarzour-soft-standalone` artifact. A workflow definition is **not** evidence of a successful run; check the actual run conclusion and artifact before deploying.
 
 ## Deploy independently
 
