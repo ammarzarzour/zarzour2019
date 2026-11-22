@@ -115,3 +115,16 @@ test('creating with an existing ID never silently overwrites a project', () => {
   assert.deepEqual(fresh.errors, []);
   assert.equal(fresh.items.length, 2);
 });
+
+
+test('delivery board reports duplicate IDs without mislabeling them as readiness failures', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const board = readFileSync(fileURLToPath(new URL('../docs/soft/projects.mjs', import.meta.url)), 'utf8');
+  for (const error of ['duplicateId', 'duplicateReference', 'projectStore', 'projectId', 'readiness']) {
+    assert.match(board, new RegExp(error + ':\\\\['));
+  }
+  assert.match(board, /Project ID already exists; the existing project was not overwritten\./);
+  assert.match(board, /معرّف المشروع مستخدم بالفعل/);
+  assert.match(board, /Review project details and try again\./);
+});
