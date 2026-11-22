@@ -182,3 +182,22 @@ test('standalone projects board synchronizes bilingual direction on storage chan
   assert.match(board, /if\(event\.key===languageKey\)return/);
   assert.match(board, /document\.documentElement\.dir=lang==="ar"\?"rtl":"ltr"/);
 });
+
+test('delivery checklist flags reject malformed values without silently coercing stored records', () => {
+  for (const flag of ['acceptanceReady', 'securityReviewed', 'bilingualReviewed']) {
+    for (const bad of ['false', 'true', 1, 0, null, [], {}]) {
+      const malformed = { ...valid, [flag]: bad };
+      assert.ok(validateProject(malformed).includes(flag));
+      assert.deepEqual(safeProjects([{ ...malformed, id: 'bad-project' }]), []);
+      assert.ok(upsertProject([], malformed, 'bad-project').errors.includes(flag));
+    }
+    for (const allowed of [undefined, true, false, 'on']) {
+      assert.deepEqual(validateProject({ ...valid, [flag]: allowed }), []);
+    }
+  }
+  const created = upsertProject([], { ...valid, acceptanceReady: 'on', securityReviewed: true, bilingualReviewed: false }, 'valid-project');
+  assert.deepEqual(created.errors, []);
+  assert.equal(created.items[0].acceptanceReady, true);
+  assert.equal(created.items[0].securityReviewed, true);
+  assert.equal(created.items[0].bilingualReviewed, false);
+});
