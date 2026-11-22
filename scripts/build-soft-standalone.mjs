@@ -61,9 +61,19 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
     if (/\b(?:new\s+(?:SharedWorker|Worker)\s*\(|importScripts\s*\(|serviceWorker\s*(?:\.\s*register|\[\s*['"]register['"]\s*\])\s*\(|navigator\s*\[\s*['"]serviceWorker['"]\s*\]\s*(?:\.\s*register|\[\s*['"]register['"]\s*\])\s*\()/i.test(content)) {
       throw new Error(`${file}: worker registration is forbidden in standalone Soft preview`);
     }
+    // CSS can load remote resources without using fetch() or HTML src/href.
+    // Standalone previews must never request network styles or images.
+    if (/@import\b/i.test(content) || /url\s*\(\s*['"]?\s*(?:https?:|\/\/|data:|\/|\.\.\/)/i.test(content)) {
+      throw new Error(`${file}: external CSS resource is forbidden in standalone Soft preview`);
+    }
     if (!/\.html$/.test(file)) continue;
     // A quoted-only parser must not silently ignore unquoted HTML navigation or form destinations.
     // Fail closed before copying any assets into the standalone package.
+    // srcset and poster are independent resource-loading channels; fail closed
+    // until their URL grammar is explicitly audited and allowlisted.
+    if (/\b(?:srcset|poster)\s*=/i.test(content)) {
+      throw new Error(`${file}: unaudited HTML media resource attribute is not standalone`);
+    }
     if (/\b(?:href|src|action|formaction)\s*=\s*(?!["'])[^\s>]+/i.test(content)) {
       throw new Error(`${file}: unquoted HTML resource attribute is not standalone`);
     }
