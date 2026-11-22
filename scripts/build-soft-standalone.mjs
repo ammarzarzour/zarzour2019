@@ -72,7 +72,7 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
     // A base element can silently redirect otherwise allowlisted relative links
     // to Travel or remote origins; meta refresh can navigate without href/src.
     // Neither mechanism is needed in the portable, offline Soft preview.
-    if (/<\\s*base\\b/i.test(content) || /<\\s*meta\\b[^>]*\\bhttp-equiv\\s*=\\s*['\"]?refresh\\b/i.test(content)) {
+    if (/<\s*base\b/i.test(content) || /<\s*meta\b[^>]*\bhttp-equiv\s*=\s*['"]?refresh\b/i.test(content)) {
       throw new Error(`${file}: HTML base or refresh navigation is forbidden in standalone Soft preview`);
     }
     // srcset and poster are independent resource-loading channels; fail closed
