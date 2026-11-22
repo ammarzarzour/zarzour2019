@@ -88,3 +88,14 @@ test('restoring stored projects drops oversized IDs that cannot be updated', () 
   const rejected = upsertProject([oversized], valid, 'soft-valid');
   assert.deepEqual(rejected.errors, ['projectStore']);
 });
+
+test('updating a collection with an oversized stored ID fails without mutation', () => {
+  const oversized = { ...valid, id: 'x'.repeat(121) };
+  const stored = [oversized];
+  const result = upsertProject(stored, { ...valid, reference: 'SOFT-NEW' }, 'new-project');
+  assert.deepEqual(result.errors, ['projectStore']);
+  assert.equal(result.items, stored);
+  assert.equal(stored[0], oversized);
+  const validStored = [{ ...valid, id: 'valid-id' }];
+  assert.deepEqual(upsertProject(validStored, { ...valid, reference: 'SOFT-NEW' }, 'new-project').errors, []);
+});
