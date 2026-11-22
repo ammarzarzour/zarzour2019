@@ -217,3 +217,19 @@ test('rejects undeclared side-effect and dynamic imports before publishing', asy
     assert.equal(await buildSoftStandalone(source, destination), softFiles.length);
   });
 });
+
+test('rejects CSS imports, external CSS URLs and unaudited media attributes', async () => {
+  for (const [file, content, expected] of [
+    ['index.html', '<style>@import "https://example.invalid/theme.css";</style>', /external CSS resource/],
+    ['brief.html', '<style>.hero { background: url(https://example.invalid/pixel.png) }</style>', /external CSS resource/],
+    ['projects.mjs', 'const css = "url(../travel/private.png)";', /external CSS resource/],
+    ['index.html', '<img srcset="https://example.invalid/1.png 1x">', /unaudited HTML media resource/],
+    ['brief.html', '<video poster="https://example.invalid/poster.jpg"></video>', /unaudited HTML media resource/],
+  ]) {
+    await fixture(async ({ source, destination }) => {
+      await writeFile(path.join(source, file), content);
+      await assert.rejects(buildSoftStandalone(source, destination), expected);
+      await assert.rejects(readdir(destination), { code: 'ENOENT' });
+    });
+  }
+});
