@@ -141,3 +141,14 @@ test('release-ready metric excludes planned and blocked projects even with compl
   assert.equal(projectMetrics(items.filter(x => x.status === 'blocked'), '2026-11-22').releaseReady, 0);
   assert.equal(projectMetrics(items.filter(x => x.status === 'planned'), '2026-11-22').releaseReady, 0);
 });
+
+
+test('local project deletion requires an explicit bilingual confirmation', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const board = readFileSync(fileURLToPath(new URL('../docs/soft/projects.mjs', import.meta.url)), 'utf8');
+  assert.match(board, /if\(!window\.confirm\(question\)\)return;changeStoredProject\(id,null\)/);
+  assert.match(board, /هل تريد حذف المشروع/);
+  assert.match(board, /Delete project \$\{item\.reference\}/);
+  assert.match(board, /This cannot be undone/);
+});
