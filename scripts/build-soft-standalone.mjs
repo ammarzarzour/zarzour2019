@@ -69,6 +69,12 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
     if (!/\.html$/.test(file)) continue;
     // A quoted-only parser must not silently ignore unquoted HTML navigation or form destinations.
     // Fail closed before copying any assets into the standalone package.
+    // A base element can silently redirect otherwise allowlisted relative links
+    // to Travel or remote origins; meta refresh can navigate without href/src.
+    // Neither mechanism is needed in the portable, offline Soft preview.
+    if (/<\\s*base\\b/i.test(content) || /<\\s*meta\\b[^>]*\\bhttp-equiv\\s*=\\s*['\"]?refresh\\b/i.test(content)) {
+      throw new Error(`${file}: HTML base or refresh navigation is forbidden in standalone Soft preview`);
+    }
     // srcset and poster are independent resource-loading channels; fail closed
     // until their URL grammar is explicitly audited and allowlisted.
     if (/\b(?:srcset|poster)\s*=/i.test(content)) {
