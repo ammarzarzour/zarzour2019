@@ -110,3 +110,67 @@ test('missing or non-object trip payloads are rejected without exceptions',()=>{
 
 // Keep offline return-status rules in the existing CI test entrypoint.
 import './return-tracking.test.mjs';
+
+
+test('reviewed travel brief copies locally and never copies stale edits',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const {runInNewContext}=await import('node:vm');
+ const html=await readFile(new URL('../docs/request.html',import.meta.url),'utf8');
+ assert.match(html,/<button id="copy"[^>]*data-ar="نسخ الملخص"[^>]*data-en="Copy summary"/);
+ assert.match(html,/<p[^>]*id="copy-status"[^>]*role="status"/);
+ const source=(await readFile(new URL('../docs/request.mjs',import.meta.url),'utf8')).replace(/^import[^\n]+\n/,'');
+ const elements=new Map(),written=[];
+ const el=id=>{if(!elements.has(id))elements.set(id,{value:'',textContent:'',hidden:false,listeners:{},focus(){},addEventListener(type,fn){this.listeners[type]=fn}});return elements.get(id)};
+ const input={service:'tourism',destination:'Damascus',departure:'2099-01-01',travelers:'3',returnDate:'2099-01-08',notes:'Family trip'};
+ const navigator={language:'en-US',clipboard:{writeText:async value=>written.push(value)}};
+ const document={documentElement:{},getElementById:el,querySelectorAll:()=>[]};
+ runInNewContext(source,{validateRequest,requestSummary,Date,FormData:class{constructor(){return Object.entries(input)}},navigator,localStorage:{getItem:()=>null,setItem(){}},document});
+ el('request').listeners.submit({preventDefault(){}});
+ await el('copy').listeners.click();
+ assert.equal(written.length,1);
+ assert.match(written[0],/Travel planning request — not a confirmed booking/);
+ assert.match(el('copy-status').textContent,/clipboard only/);
+ el('request').listeners.input();
+ await el('copy').listeners.click();
+ assert.equal(written.length,1,'editing invalidates the reviewed brief, so no stale summary is copied');
+ assert.equal(el('copy-status').textContent,'');
+ el('request').listeners.submit({preventDefault(){}});
+ navigator.clipboard.writeText=async()=>{throw new Error('Denied')};
+ await el('copy').listeners.click();
+ assert.match(el('copy-status').textContent,/download the summary instead/);
+ let finish;
+ navigator.clipboard.writeText=()=>new Promise(resolve=>{finish=resolve});
+ const pending=el('copy').listeners.click();
+ el('request').listeners.input();
+ finish();
+ await pending;
+ assert.equal(el('copy-status').textContent,'','late clipboard completion cannot claim success after changes');
+});
+
+test('trip planner follows safe device language and cross-tab preference updates',async()=>{
+ const {readFile}=await import('node:fs/promises');
+ const {runInNewContext}=await import('node:vm');
+ const source=(await readFile(new URL('../docs/request.mjs',import.meta.url),'utf8')).replace(/^import[^\n]+\n/,'');
+ const make=(device,savedValue)=>{
+  const elements=new Map(),listeners={},writes=[],store={value:savedValue};
+  const el=id=>{if(!elements.has(id))elements.set(id,{value:'',textContent:'',hidden:false,listeners:{},addEventListener(type,fn){this.listeners[type]=fn}});return elements.get(id)};
+  const document={documentElement:{},getElementById:el,querySelectorAll:()=>[]};
+  const localStorage={getItem:()=>store.value,setItem:(key,value)=>{store.value=value;writes.push([key,value])}};
+  runInNewContext(source,{validateRequest,requestSummary,Date,navigator:{language:device},localStorage,document,window:{addEventListener:(name,fn)=>{listeners[name]=fn}}});
+  return {document,store,writes,listeners,el};
+ };
+ const a=make('en-US','invalid-preference');
+ assert.equal(a.document.documentElement.lang,'en','invalid stored preference must use browser language');
+ a.store.value='ar';a.listeners.storage({key:'zarzour-language'});
+ assert.equal(a.document.documentElement.dir,'rtl');
+ assert.equal(a.writes.length,0,'cross-tab updates must not echo writes');
+ a.listeners.storage({key:'unrelated'});
+ assert.equal(a.document.documentElement.lang,'ar');
+ a.store.value=null;a.listeners.storage({key:null});
+ assert.equal(a.document.documentElement.lang,'en');
+ a.el('language').listeners.click();
+ assert.equal(a.document.documentElement.lang,'ar');
+ assert.deepEqual(a.writes,[['zarzour-language','ar']]);
+ const noDevice=make(undefined,null);
+ assert.equal(noDevice.document.documentElement.lang,'ar','missing navigator language safely defaults to Arabic');
+});
