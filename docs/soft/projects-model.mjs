@@ -14,7 +14,7 @@ export function upsertProject(items,input,id,expected){
  if(!Array.isArray(items)||items.some(x=>!x||typeof x!=="object"||Array.isArray(x)||typeof x.id!=="string"||!x.id.trim()||x.id.length>120||validateProject(x).length))return {errors:["projectStore"],items};
  const ids=new Set(),references=new Set();
  for(const existing of items){const ref=existing.reference.trim().toUpperCase();if(ids.has(existing.id)||references.has(ref))return {errors:["projectStore"],items};ids.add(existing.id);references.add(ref);}
- if(expected!==undefined){const current=items.find(x=>x.id===id);if(!current||validateProject(current).length||validateProject(expected).length||JSON.stringify(normalizeProject(current,id))!==JSON.stringify(normalizeProject(expected,id)))return {errors:["conflict"],items:items};}
+ if(expected!==undefined){const current=items.find(x=>x.id===id);if(!current||!expected||typeof expected!=="object"||expected.id!==id||validateProject(current).length||validateProject(expected).length||JSON.stringify(normalizeProject(current,id))!==JSON.stringify(normalizeProject(expected,id)))return {errors:["conflict"],items:items};}
  // A create operation must never silently overwrite an existing ID. Edits pass an expected snapshot.
  if(expected===undefined&&ids.has(id))return {errors:["duplicateId"],items};
  const errors=validateProject(input);if(errors.length)return {errors,items};
