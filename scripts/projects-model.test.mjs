@@ -122,7 +122,7 @@ test('delivery board reports duplicate IDs without mislabeling them as readiness
   const { fileURLToPath } = await import('node:url');
   const board = readFileSync(fileURLToPath(new URL('../docs/soft/projects.mjs', import.meta.url)), 'utf8');
   for (const error of ['duplicateId', 'duplicateReference', 'projectStore', 'projectId', 'readiness']) {
-    assert.match(board, new RegExp(error + ':\\\\['));
+    assert.ok(board.includes(error + ':['), `Missing feedback for ${error}`);
   }
   assert.match(board, /Project ID already exists; the existing project was not overwritten\./);
   assert.match(board, /معرّف المشروع مستخدم بالفعل/);
