@@ -99,3 +99,19 @@ test('updating a collection with an oversized stored ID fails without mutation',
   const validStored = [{ ...valid, id: 'valid-id' }];
   assert.deepEqual(upsertProject(validStored, { ...valid, reference: 'SOFT-NEW' }, 'new-project').errors, []);
 });
+
+
+test('creating with an existing ID never silently overwrites a project', () => {
+  const existing = upsertProject([], valid, 'existing-project').items;
+  const incoming = { ...valid, reference: 'SOFT-NEW', notes: 'another project' };
+  const collision = upsertProject(existing, incoming, 'existing-project');
+  assert.deepEqual(collision.errors, ['duplicateId']);
+  assert.equal(collision.items, existing);
+  assert.equal(existing[0].reference, 'SOFT-001');
+  const edit = upsertProject(existing, { ...valid, notes: 'edited' }, 'existing-project', existing[0]);
+  assert.deepEqual(edit.errors, []);
+  assert.equal(edit.items[0].notes, 'edited');
+  const fresh = upsertProject(existing, incoming, 'another-project');
+  assert.deepEqual(fresh.errors, []);
+  assert.equal(fresh.items.length, 2);
+});
