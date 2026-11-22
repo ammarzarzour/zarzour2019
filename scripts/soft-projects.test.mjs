@@ -35,20 +35,20 @@ test("filters projects by reference, note, type and status",()=>{const items=[no
 
 test("updates project stages and progress without adding duplicate records",()=>{
  const items=[normalizeProject(valid,"a"),normalizeProject({...valid,reference:"SOFT-102"},"b")];
- const result=upsertProject(items,{...valid,stage:"validation",tasksDone:"10"},"a");
+ const result=upsertProject(items,{...valid,stage:"validation",tasksDone:"10"},"a",items[0]);
  assert.deepEqual(result.errors,[]);assert.equal(result.items.length,2);assert.equal(result.items[0].tasksDone,10);assert.equal(result.items[0].stage,"validation");
  assert.equal(items[0].tasksDone,7);assert.strictEqual(result.items[1],items[1]);
 });
 test("rejects duplicate references on add and edit, allows own reference",()=>{
  const items=[normalizeProject(valid,"a"),normalizeProject({...valid,reference:"SOFT-102"},"b")];
- for(const id of ["new","b"]){const result=upsertProject(items,{...valid,reference:" soft-101 "},id);assert.deepEqual(result.errors,["duplicateReference"]);assert.strictEqual(result.items,items)}
- assert.deepEqual(upsertProject(items,valid,"a").errors,[]);
+ for(const id of ["new","b"]){const result=upsertProject(items,{...valid,reference:" soft-101 "},id,id==="b"?items[1]:undefined);assert.deepEqual(result.errors,["duplicateReference"]);assert.strictEqual(result.items,items)}
+ assert.deepEqual(upsertProject(items,valid,"a",items[0]).errors,[]);
 });
 test("editing cannot bypass delivery readiness or invalid task counts",()=>{
  const items=[normalizeProject(valid,"a")];
- assert.deepEqual(upsertProject(items,{...valid,status:"completed"},"a").errors,["readiness"]);
- assert.deepEqual(upsertProject(items,{...valid,tasksDone:"13"},"a").errors,["tasksDone"]);
- const result=upsertProject(items,{...valid,status:"completed",tasksDone:"12"},"a");
+ assert.deepEqual(upsertProject(items,{...valid,status:"completed"},"a",items[0]).errors,["readiness"]);
+ assert.deepEqual(upsertProject(items,{...valid,tasksDone:"13"},"a",items[0]).errors,["tasksDone"]);
+ const result=upsertProject(items,{...valid,status:"completed",tasksDone:"12"},"a",items[0]);
  assert.deepEqual(result.errors,[]);assert.equal(result.items[0].status,"completed");
 });
 
@@ -86,7 +86,7 @@ test("row actions preserve newer projects and edit forms on conflict or storage 
   if(scenario==="partial")stored=JSON.stringify([original,{id:"bad"}]);
   const before=stored,handlers={};let cancelled=0,saves=0;
   const context=vm.createContext({...storageModel,items:[original],editingId:"one",editingSnapshot:original,key:"soft",lang:"en",
-   rows:{addEventListener:(event,fn)=>handlers[event]=fn},localStorage:{getItem:()=>stored},
+   rows:{addEventListener:(event,fn)=>handlers[event]=fn},window:{confirm:()=>true},localStorage:{getItem:()=>stored},
    save:items=>{saves++;if(scenario==="writeFailure")return false;stored=JSON.stringify(items);return true},
    show:()=>{},render:()=>{},cancelEdit:()=>cancelled++});
   vm.runInContext(listeners,context);
@@ -134,7 +134,7 @@ test("deleting incomplete historical completed records checks the latest row wit
   let stored=JSON.stringify(scenario==="changed"?[newer]:scenario==="deleted"?[]:[legacy]);
   const before=stored,handlers={};let notices=[],cancelled=0;
   const context=vm.createContext({...storageModel,items:[legacy],editingId:"legacy",editingSnapshot:legacy,key:"soft",lang:"en",
-   rows:{addEventListener:(event,fn)=>handlers[event]=fn},localStorage:{getItem:()=>stored},
+   rows:{addEventListener:(event,fn)=>handlers[event]=fn},window:{confirm:()=>true},localStorage:{getItem:()=>stored},
    save:next=>{if(scenario==="storageFailure")return false;stored=JSON.stringify(next);return true},
    show:message=>notices.push(message),render:()=>{},cancelEdit:()=>cancelled++});
   vm.runInContext(listeners,context);
