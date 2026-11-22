@@ -29,6 +29,11 @@ rows.addEventListener("click",e=>{const editId=e.target.dataset.editId;if(editId
 // Other tabs may update the same local register while this board remains open.
 // Refresh the displayed snapshot without writing back or discarding an edit form.
 if(typeof window!=="undefined"&&typeof window.addEventListener==="function")window.addEventListener("storage",event=>{
+ if(event.key===languageKey||event.key===null){
+  const next=event.newValue==="en"?"en":"ar";
+  if(next!==lang){lang=next;applyLanguage()}
+  if(event.key===languageKey)return;
+ }
  if(event.key!==key&&event.key!==null)return;
  try{
   const parsed=event.newValue===null?[]:JSON.parse(event.newValue);
