@@ -87,12 +87,12 @@ test('rejects symlinked or non-regular allowlisted source assets before copying'
     const asset = path.join(source, 'brief.mjs');
     await unlink(asset);
     await symlink(external, asset);
-    await assert.rejects(buildSoftStandalone(source, destination), /source asset must be a regular file/);
+    await assert.rejects(buildSoftStandalone(source, destination), /source asset must be a regular, unlinked file/);
     await assert.rejects(readdir(destination), { code: 'ENOENT' });
     assert.equal(await readFile(external, 'utf8'), 'must never be copied');
     await unlink(asset);
     await mkdir(asset);
-    await assert.rejects(buildSoftStandalone(source, destination), /source asset must be a regular file/);
+    await assert.rejects(buildSoftStandalone(source, destination), /source asset must be a regular, unlinked file/);
     await assert.rejects(readdir(destination), { code: 'ENOENT' });
   });
 });
@@ -104,7 +104,7 @@ test('rejects pre-existing destination symlinks and unrelated files without alte
     const protectedFile = path.join(root, 'protected.txt');
     await writeFile(protectedFile, 'unchanged');
     await symlink(protectedFile, path.join(destination, 'index.html'));
-    await assert.rejects(buildSoftStandalone(source, destination), /Destination asset must be a regular file/);
+    await assert.rejects(buildSoftStandalone(source, destination), /Destination asset must be a regular, unlinked file/);
     assert.equal(await readFile(protectedFile, 'utf8'), 'unchanged');
     await rm(path.join(destination, 'index.html'));
     await writeFile(path.join(destination, 'travel-data.json'), 'keep');
