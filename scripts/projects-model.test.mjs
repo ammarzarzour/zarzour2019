@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateProject, upsertProject, safeProjects } from '../docs/soft/projects-model.mjs';
+import { validateProject, upsertProject, safeProjects, projectMetrics } from '../docs/soft/projects-model.mjs';
 
 const valid = {
   reference: 'SOFT-001', type: 'website', stage: 'discovery',
@@ -127,4 +127,17 @@ test('delivery board reports duplicate IDs without mislabeling them as readiness
   assert.match(board, /Project ID already exists; the existing project was not overwritten\./);
   assert.match(board, /معرّف المشروع مستخدم بالفعل/);
   assert.match(board, /Review project details and try again\./);
+});
+
+
+test('release-ready metric excludes planned and blocked projects even with completed checks', () => {
+  const ready = { ...valid, id: 'active-ready', status: 'active', stage: 'release', tasksDone: 2,
+    acceptanceReady: true, securityReviewed: true, bilingualReviewed: true };
+  const items = [ready, { ...ready, id: 'planned-ready', reference: 'SOFT-002', status: 'planned' },
+    { ...ready, id: 'blocked-ready', reference: 'SOFT-003', status: 'blocked' },
+    { ...ready, id: 'completed-ready', reference: 'SOFT-004', status: 'completed' },
+    { ...ready, id: 'not-ready', reference: 'SOFT-005', securityReviewed: false }];
+  assert.equal(projectMetrics(items, '2026-11-22').releaseReady, 2);
+  assert.equal(projectMetrics(items.filter(x => x.status === 'blocked'), '2026-11-22').releaseReady, 0);
+  assert.equal(projectMetrics(items.filter(x => x.status === 'planned'), '2026-11-22').releaseReady, 0);
 });
