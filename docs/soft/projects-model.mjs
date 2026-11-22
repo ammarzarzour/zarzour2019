@@ -10,6 +10,7 @@ export function projectMetrics(items,today){const open=items.filter(x=>x.status!
 export function filterProjects(items,{query="",type="",status=""}={}){const needle=query.trim().toLocaleLowerCase();return items.filter(x=>(!type||x.type===type)&&(!status||x.status===status)&&(!needle||x.reference.toLocaleLowerCase().includes(needle)||x.notes.toLocaleLowerCase().includes(needle)))}
 
 export function upsertProject(items,input,id,expected){
+ if(typeof id!=="string"||!id.trim()||id.length>120)return {errors:["projectId"],items};
  if(!Array.isArray(items)||items.some(x=>!x||typeof x!=="object"||Array.isArray(x)||typeof x.id!=="string"||!x.id.trim()||validateProject(x).length))return {errors:["projectStore"],items};
  const ids=new Set(),references=new Set();
  for(const existing of items){const ref=existing.reference.trim().toUpperCase();if(ids.has(existing.id)||references.has(ref))return {errors:["projectStore"],items};ids.add(existing.id);references.add(ref);}
