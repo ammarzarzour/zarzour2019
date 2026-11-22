@@ -65,3 +65,15 @@ test('duplicate stored ids or references cannot be updated ambiguously', () => {
   assert.deepEqual(result.errors, ['projectStore']);
   assert.equal(result.items, blankId);
 });
+
+test('missing, blank and non-string project identifiers cannot create unusable records', () => {
+  const existing = upsertProject([], valid, 'existing-project').items;
+  for (const id of [undefined, null, '', '  ', 123, {}, [], 'x'.repeat(121)]) {
+    const result = upsertProject(existing, { ...valid, reference: 'SOFT-NEW' }, id);
+    assert.deepEqual(result.errors, ['projectId']);
+    assert.equal(result.items, existing);
+  }
+  const created = upsertProject(existing, { ...valid, reference: 'SOFT-NEW' }, 'new-project');
+  assert.deepEqual(created.errors, []);
+  assert.equal(created.items[0].id, 'new-project');
+});
