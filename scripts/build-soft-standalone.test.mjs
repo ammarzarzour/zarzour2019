@@ -233,3 +233,18 @@ test('rejects CSS imports, external CSS URLs and unaudited media attributes', as
     });
   }
 });
+
+test('rejects HTML base URL rewriting and meta refresh navigation before publishing', async () => {
+  for (const html of [
+    '<base href="https://example.invalid/">',
+    '<base href="../travel/">',
+    '<meta http-equiv="refresh" content="0;url=https://example.invalid/">',
+    '<META HTTP-EQUIV=refresh content="0;url=../travel/">',
+  ]) {
+    await fixture(async ({ source, destination }) => {
+      await writeFile(path.join(source, 'index.html'), html);
+      await assert.rejects(buildSoftStandalone(source, destination), /HTML base or refresh navigation is forbidden/);
+      await assert.rejects(readdir(destination), { code: 'ENOENT' });
+    });
+  }
+});
