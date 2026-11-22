@@ -1,11 +1,23 @@
 import {validateRequest,requestSummary} from './request-model.mjs';
-let language='ar';
-try {language=localStorage.getItem('zarzour-language') || (navigator.language.toLowerCase().startsWith('en')?'en':'ar');} catch {language=navigator.language.toLowerCase().startsWith('en')?'en':'ar';}
-if(!['ar','en'].includes(language))language='ar';
+function deviceLanguage(){
+ return typeof navigator!=='undefined'&&typeof navigator.language==='string'&&navigator.language.toLowerCase().startsWith('en')?'en':'ar';
+}
+function preferredLanguage(){
+ const fallback=deviceLanguage();
+ try{const saved=localStorage.getItem('zarzour-language');return ['ar','en'].includes(saved)?saved:fallback;}catch{return fallback;}
+}
+let language=preferredLanguage();
 const form=document.getElementById('request');
 const summary=document.getElementById('summary');
 const result=document.getElementById('result');
 let reviewed=null;
+let copyAttempt=0,copyState=null;
+const copyFeedback=document.getElementById('copy-status');
+const copyMessages={
+ ar:{success:'تم نسخ الملخص إلى الحافظة على جهازك فقط.',failure:'تعذّر النسخ. يمكنك تنزيل الملخص بدلاً من ذلك.'},
+ en:{success:'Summary copied to your device clipboard only.',failure:'Copy unavailable. You can download the summary instead.'}
+};
+function renderCopyFeedback(){copyFeedback.textContent=copyState?copyMessages[language][copyState]:'';}
 const today=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
 document.getElementById('departure').min=today();
 const messages={
@@ -21,14 +33,39 @@ function apply(){
  document.title=language==='ar'?'خطط رحلتك | زرزور':'Plan your trip | Zarzour';
  showErrors();
  if(reviewed)summary.textContent=requestSummary(reviewed,language);
+ renderCopyFeedback();
 }
-document.getElementById('language').addEventListener('click',()=>{language=language==='ar'?'en':'ar';try{localStorage.setItem('zarzour-language',language);}catch{}apply();});
+document.getElementById('language').addEventListener('click',()=>{
+ language=language==='ar'?'en':'ar';copyAttempt++;copyState=null;
+ try{localStorage.setItem('zarzour-language',language);}catch{}apply();
+});
+if(typeof window!=='undefined'&&typeof window.addEventListener==='function')window.addEventListener('storage',event=>{
+ if(event.key!=='zarzour-language'&&event.key!==null)return;
+ const updated=preferredLanguage();
+ if(updated===language)return;
+ language=updated;copyAttempt++;copyState=null;apply();
+});
 form.addEventListener('input',()=>{
- reviewed=null;result.hidden=true;summary.textContent='';
+ reviewed=null;copyAttempt++;copyState=null;renderCopyFeedback();
+ result.hidden=true;summary.textContent='';
  fieldErrors=[];showErrors();
  document.getElementById('returnDate').min=document.getElementById('departure').value || today();
 });
-form.addEventListener('submit',event=>{event.preventDefault();const input=Object.fromEntries(new FormData(form));const errors=validateRequest(input,today());fieldErrors=errors;showErrors();if(errors.length){reviewed=null;result.hidden=true;summary.textContent='';document.getElementById(errors[0]).focus();return;}reviewed=input;document.getElementById('error').textContent='';summary.textContent=requestSummary(input,language);result.hidden=false;result.focus();});
+form.addEventListener('submit',event=>{event.preventDefault();const input=Object.fromEntries(new FormData(form));const errors=validateRequest(input,today());fieldErrors=errors;copyAttempt++;copyState=null;renderCopyFeedback();showErrors();if(errors.length){reviewed=null;result.hidden=true;summary.textContent='';document.getElementById(errors[0]).focus();return;}reviewed=input;document.getElementById('error').textContent='';summary.textContent=requestSummary(input,language);result.hidden=false;result.focus();});
+document.getElementById('copy').addEventListener('click',async()=>{
+ if(!reviewed)return;
+ const text=requestSummary(reviewed,language),attempt=copyAttempt;
+ try{
+  if(typeof navigator==='undefined'||typeof navigator.clipboard?.writeText!=='function')throw new Error('Clipboard unavailable');
+  await navigator.clipboard.writeText(text);
+  if(attempt!==copyAttempt)return;
+  copyState='success';
+ }catch{
+  if(attempt!==copyAttempt)return;
+  copyState='failure';
+ }
+ renderCopyFeedback();
+});
 document.getElementById('download').addEventListener('click',()=>{if(!reviewed)return;const blob=new Blob(['\uFEFF'+requestSummary(reviewed,language)],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const anchor=document.createElement('a');anchor.href=url;anchor.download='zarzour-trip-request.txt';anchor.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
 document.getElementById('print').addEventListener('click',()=>{if(reviewed)window.print();});
 apply();
