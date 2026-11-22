@@ -87,6 +87,17 @@ export async function buildSoftStandalone(sourceDir, destinationDir) {
   }
   for (const file of softFiles.filter(name => name.endsWith('.mjs'))) {
     const content = await readFile(path.join(source, file), 'utf8');
+    // Dynamic imports can load undeclared modules at runtime, bypassing the
+    // static import allowlist. The standalone preview does not need them.
+    if (/\bimport\s*\(/.test(content)) {
+      throw new Error(`${file}: dynamic imports are forbidden in standalone Soft bundle`);
+    }
+    // Side-effect imports have no 'from' clause and need separate validation.
+    for (const [, dependency] of content.matchAll(/\bimport\s*["']([^"']+)["']/g)) {
+      if (!dependency.startsWith('./') || !softFiles.includes(path.posix.normalize(dependency.slice(2)))) {
+        throw new Error(`${file}: dependency outside standalone Soft bundle: ${dependency}`);
+      }
+    }
     for (const [, dependency] of content.matchAll(/\bfrom\s*["']([^"']+)["']/g)) {
       if (!dependency.startsWith('./') || !softFiles.includes(path.posix.normalize(dependency.slice(2)))) {
         throw new Error(`${file}: dependency outside standalone Soft bundle: ${dependency}`);
