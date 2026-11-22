@@ -197,3 +197,23 @@ test('rejects hard-linked destination assets without overwriting external files'
     assert.deepEqual((await readdir(destination)).sort(), ['index.html']);
   });
 });
+
+
+test('rejects undeclared side-effect and dynamic imports before publishing', async () => {
+  for (const [moduleCode, expected] of [
+    ['import "../../travel-private.mjs";', /dependency outside standalone Soft bundle/],
+    ['import "https://example.invalid/tracker.mjs";', /dependency outside standalone Soft bundle/],
+    ['await import("../../travel-private.mjs");', /dynamic imports are forbidden/],
+    ['import("./brief-model.mjs");', /dynamic imports are forbidden/],
+  ]) {
+    await fixture(async ({ source, destination }) => {
+      await writeFile(path.join(source, 'brief.mjs'), moduleCode);
+      await assert.rejects(buildSoftStandalone(source, destination), expected);
+      await assert.rejects(readdir(destination), { code: 'ENOENT' });
+    });
+  }
+  await fixture(async ({ source, destination }) => {
+    await writeFile(path.join(source, 'brief.mjs'), 'import "./brief-model.mjs";');
+    assert.equal(await buildSoftStandalone(source, destination), softFiles.length);
+  });
+});
