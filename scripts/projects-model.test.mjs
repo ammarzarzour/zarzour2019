@@ -77,3 +77,14 @@ test('missing, blank and non-string project identifiers cannot create unusable r
   assert.deepEqual(created.errors, []);
   assert.equal(created.items[0].id, 'new-project');
 });
+
+test('restoring stored projects drops oversized IDs that cannot be updated', () => {
+  const validStored = { ...valid, id: 'soft-valid' };
+  const oversized = { ...valid, id: 'x'.repeat(121), reference: 'SOFT-LONG' };
+  const restored = safeProjects([oversized, validStored]);
+  assert.equal(restored.length, 1);
+  assert.equal(restored[0].id, 'soft-valid');
+  assert.deepEqual(upsertProject(restored, { ...valid, notes: 'edited' }, 'soft-valid').errors, []);
+  const rejected = upsertProject([oversized], valid, 'soft-valid');
+  assert.deepEqual(rejected.errors, ['projectStore']);
+});
