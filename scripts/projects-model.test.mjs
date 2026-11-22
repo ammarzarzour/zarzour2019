@@ -170,3 +170,15 @@ test('optimistic edit snapshots must belong to the same project ID', () => {
   assert.deepEqual(accepted.errors, []);
   assert.equal(accepted.items[0].notes, 'edited');
 });
+
+
+test('standalone projects board synchronizes bilingual direction on storage changes', async () => {
+  const { readFileSync } = await import('node:fs');
+  const { fileURLToPath } = await import('node:url');
+  const board = readFileSync(fileURLToPath(new URL('../docs/soft/projects.mjs', import.meta.url)), 'utf8');
+  assert.match(board, /event\.key===languageKey\|\|event\.key===null/);
+  assert.match(board, /event\.newValue==="en"\?"en":"ar"/);
+  assert.match(board, /if\(next!==lang\)\{lang=next;applyLanguage\(\)\}/);
+  assert.match(board, /if\(event\.key===languageKey\)return/);
+  assert.match(board, /document\.documentElement\.dir=lang==="ar"\?"rtl":"ltr"/);
+});
