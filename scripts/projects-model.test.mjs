@@ -152,3 +152,21 @@ test('local project deletion requires an explicit bilingual confirmation', async
   assert.match(board, /Delete project \$\{item\.reference\}/);
   assert.match(board, /This cannot be undone/);
 });
+
+test('optimistic edit snapshots must belong to the same project ID', () => {
+  const stored = upsertProject([], valid, 'soft-first').items;
+  const proposed = { ...valid, notes: 'edited' };
+  for (const expected of [
+    { ...stored[0], id: 'soft-other' },
+    { ...stored[0], id: undefined },
+    { ...stored[0], id: null }
+  ]) {
+    const result = upsertProject(stored, proposed, 'soft-first', expected);
+    assert.deepEqual(result.errors, ['conflict']);
+    assert.equal(result.items, stored);
+    assert.equal(stored[0].notes, '');
+  }
+  const accepted = upsertProject(stored, proposed, 'soft-first', stored[0]);
+  assert.deepEqual(accepted.errors, []);
+  assert.equal(accepted.items[0].notes, 'edited');
+});
