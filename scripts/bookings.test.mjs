@@ -9,6 +9,19 @@ test("validates operational booking fields", () => {
   assert.deepEqual(validateBooking({ ...valid, reference: "!", service: "other", travelers: 0 }), ["reference", "service", "travelers"]);
 });
 
+test("rejects non-decimal, boolean and malformed traveler counts without saving", () => {
+  const before = [normalizeBooking(valid, "existing")];
+  for (const travelers of [true, false, "1e2", "0x10", "2.5", "Infinity", "  ", [], {}, null]) {
+    assert.ok(validateBooking({ ...valid, travelers }).includes("travelers"), String(travelers));
+    const result = upsertBooking(before, { ...valid, reference: "BK-NEW", travelers }, "new-id");
+    assert.deepEqual(result.errors, ["travelers"]);
+    assert.strictEqual(result.items, before);
+  }
+  for (const travelers of [1, 500, "1", "004", " 12 "]) {
+    assert.deepEqual(validateBooking({ ...valid, travelers }), []);
+  }
+});
+
 test("rejects an end date before the start", () => assert.deepEqual(validateBooking({ ...valid, endDate: "2026-11-11" }), ["endDate"]));
 
 test("normalizes references, numbers and checkboxes", () => {
