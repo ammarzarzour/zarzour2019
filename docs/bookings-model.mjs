@@ -65,7 +65,7 @@ export function safeBookings(value) {
   if (!Array.isArray(value)) return [];
   const ids = new Set(), references = new Set();
   return value.filter(item => {
-    if (!item || typeof item.id !== "string" || !item.id.trim() || ids.has(item.id) || validateBooking(item).length) return false;
+    if (!item || typeof item.id !== "string" || !item.id.trim() || item.id.length > 120 || ids.has(item.id) || validateBooking(item).length) return false;
     const reference = String(item.reference).trim().toUpperCase();
     if (references.has(reference)) return false;
     ids.add(item.id); references.add(reference); return true;
