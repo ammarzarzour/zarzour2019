@@ -35,6 +35,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Syntax-check standalone builder and regression harnesses
+        run: |
+          node --check scripts/build-soft-standalone.mjs
+          node --check scripts/build-soft-standalone.test.mjs
+          node --check scripts/soft-served-artifact.test.mjs
+          node --check scripts/projects-model.test.mjs
+          node --check scripts/soft-projects.test.mjs
+          node --check scripts/test-soft-spaced-attributes.mjs
       - name: Syntax-check standalone browser modules
         run: |
           node --check docs/soft/brief.mjs
