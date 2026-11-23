@@ -252,3 +252,16 @@ test("booking interface preserves newer cross-tab data, unsaved form values and 
  assert.equal(JSON.parse(stored).length,1,"write failure must not mutate the register");
  assert.match(el("message").textContent,/Local storage failed/);
 });
+
+test("oversized stored booking IDs are excluded consistently with edit validation", () => {
+  const good = normalizeBooking(valid, "valid-id");
+  const oversized = normalizeBooking({ ...valid, reference: "BK-LONG" }, "x".repeat(121));
+  const restored = safeBookings([oversized, good]);
+  assert.deepEqual(restored, [good]);
+  const attempted = upsertBooking([oversized], { ...valid, reference: "BK-NEW" }, "new-id");
+  assert.deepEqual(attempted.errors, ["bookingStore"]);
+  assert.equal(attempted.items[0], oversized);
+  const accepted = upsertBooking(restored, { ...valid, reference: "BK-NEW" }, "new-id");
+  assert.deepEqual(accepted.errors, []);
+  assert.equal(accepted.items.length, 2);
+});
