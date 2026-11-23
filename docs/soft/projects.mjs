@@ -1,4 +1,4 @@
-import {deliveryReadiness,filterProjects,upsertProject,projectMetrics,safeProjects,statuses,validateProject,localToday} from "./projects-model.mjs";const key="zarzour-soft-projects-v1",languageKey="zarzour-soft-language",form=document.getElementById("project-form"),rows=document.getElementById("rows"),message=document.getElementById("message"),empty=document.getElementById("empty");let lang="ar",items=[],editingId=null,editingSnapshot=null;try{lang=localStorage.getItem(languageKey)==="en"?"en":"ar";const saved=localStorage.getItem(key);items=saved?safeProjects(JSON.parse(saved)):[]}catch{items=[]}
+import {deliveryReadiness,filterProjects,upsertProject,projectMetrics,safeProjects,statuses,validateProject,localToday,exportProjectBackup,importProjectBackup,PROJECT_BACKUP_MAX_BYTES} from "./projects-model.mjs";const key="zarzour-soft-projects-v1",languageKey="zarzour-soft-language",form=document.getElementById("project-form"),rows=document.getElementById("rows"),message=document.getElementById("message"),empty=document.getElementById("empty");let lang="ar",items=[],editingId=null,editingSnapshot=null;try{lang=localStorage.getItem(languageKey)==="en"?"en":"ar";const saved=localStorage.getItem(key);items=saved?safeProjects(JSON.parse(saved)):[]}catch{items=[]}
 const words={website:["موقع","Website"],mobile_app:["تطبيق","Mobile app"],internal_tool:["أداة داخلية","Internal tool"],automation:["أتمتة","Automation"],discovery:["اكتشاف","Discovery"],design:["تصميم","Design"],build:["بناء","Build"],validation:["تحقق","Validation"],release:["إصدار","Release"],maintenance:["صيانة","Maintenance"],planned:["مخطط","Planned"],active:["نشط","Active"],blocked:["متعثر","Blocked"],completed:["مكتمل","Completed"]},t=k=>words[k]?.[lang==="ar"?0:1]||k;function show(x,e=false){message.textContent=x;message.className=e?"message error":"message";message.hidden=false}function save(next=items,formSubmission=false){try{localStorage.setItem(key,JSON.stringify(next));return true}catch{show(formSubmission?(lang==="ar"?"لم يتم الحفظ؛ بقيت مدخلات النموذج متاحة. أعد المحاولة قبل مغادرة الصفحة.":"Not saved; form inputs are preserved. Retry before leaving this page."):(lang==="ar"?"تعذر الحفظ الدائم؛ التغييرات مؤقتة فقط.":"Permanent storage failed; changes are session-only."),true);return false}}
 function render(){const m=projectMetrics(items,localToday());for(const k of ["total","active","blocked","overdue","dueSoon","releaseReady"])document.getElementById("m-"+k).textContent=m[k];document.getElementById("m-progress").textContent=m.progress+"%";const shown=filterProjects(items,{query:document.getElementById("search").value,type:document.getElementById("filter-type").value,status:document.getElementById("filter-status").value});rows.replaceChildren();empty.hidden=shown.length>0;for(const item of shown){const ready=deliveryReadiness(item),tr=document.createElement("tr");for(const value of [item.reference,t(item.type),t(item.stage)]){const td=document.createElement("td");td.textContent=value;tr.append(td)}const state=document.createElement("select");state.dataset.statusId=item.id;for(const s of statuses){const o=document.createElement("option");o.value=s;o.textContent=t(s);o.selected=s===item.status;state.append(o)}const sc=document.createElement("td");sc.append(state);tr.append(sc);const rc=document.createElement("td"),badge=document.createElement("span");badge.className="badge"+(ready.blockers.length?" blocked":"");badge.textContent=ready.score+"%";badge.title=ready.blockers.join(", ");rc.append(badge);tr.append(rc);for(const value of [item.tasksDone+" / "+item.tasksTotal,item.targetDate]){const td=document.createElement("td");td.textContent=value;tr.append(td)}const ac=document.createElement("td"),del=document.createElement("button");del.className="danger";del.type="button";del.dataset.deleteId=item.id;del.textContent=lang==="ar"?"حذف":"Delete";const edit=document.createElement("button");edit.type="button";edit.dataset.editId=item.id;edit.textContent=lang==="ar"?"تعديل":"Edit";ac.append(edit,del);tr.append(ac);rows.append(tr)}}
 function applyLanguage(){document.documentElement.lang=lang;document.documentElement.dir=lang==="ar"?"rtl":"ltr";document.querySelectorAll("[data-ar]").forEach(n=>n.innerHTML=n.dataset[lang]);document.querySelectorAll("[data-ar-placeholder]").forEach(n=>n.placeholder=n.dataset[lang+"Placeholder"]);document.getElementById("language").textContent=lang==="ar"?"English":"العربية";render()}
@@ -46,4 +46,65 @@ if(typeof window!=="undefined"&&typeof window.addEventListener==="function")wind
  }catch{
   show(lang==="ar"?"تغيّر التخزين في نافذة أخرى لكن السجل غير صالح؛ لم تُستبدل البيانات المعروضة.":"Storage changed in another tab but the register is invalid; displayed records were preserved.",true);
  }
+});
+
+
+// Explicit, local-only handoff of the delivery board when Soft moves to a
+// separate hosting origin. Never submit a backup to an external endpoint.
+function latestProjectsForBackup(){
+ const raw=localStorage.getItem(key);
+ const parsed=raw===null?[]:JSON.parse(raw);
+ if(!Array.isArray(parsed))throw Error("Invalid register");
+ const latest=safeProjects(parsed);
+ if(latest.length!==parsed.length)throw Error("Incomplete register");
+ return {raw,latest};
+}
+document.getElementById("export-projects").addEventListener("click",()=>{
+ let url=null;
+ try{
+  const {latest}=latestProjectsForBackup();
+  if(!latest.length){show(lang==="ar"?"لا توجد مشاريع صالحة لتصديرها.":"No saved projects to export.",true);return}
+  const backup=exportProjectBackup(latest);
+  const blob=new Blob([backup],{type:"application/json;charset=utf-8"});
+  url=URL.createObjectURL(blob);
+  const download=document.createElement("a");
+  download.href=url;
+  download.download="zarzour-soft-projects-"+localToday()+".json";
+  document.body.append(download);
+  download.click();
+  download.remove();
+  show(lang==="ar"?"تم تجهيز نسخة احتياطية محلية؛ لا تُرسل لأي خادم.":"Local backup prepared; no data was sent to a server.");
+ }catch{
+  show(lang==="ar"?"تعذر تصدير سجل المشاريع؛ لم تتغير البيانات.":"Could not export project register; data was unchanged.",true);
+ }finally{if(url!==null)URL.revokeObjectURL(url)}
+});
+const importFile=document.getElementById("import-project-file");
+document.getElementById("import-projects").addEventListener("click",()=>importFile.click());
+let importBusy=false;
+importFile.addEventListener("change",async()=>{
+ if(importBusy)return;
+ const file=importFile.files?.[0];
+ if(!file)return;
+ importBusy=true;
+ try{
+  if(file.size>PROJECT_BACKUP_MAX_BYTES)throw Error("File too large");
+  const restored=importProjectBackup(await file.text());
+  const {raw}=latestProjectsForBackup();
+  const warning=lang==="ar"
+   ?"سيُستبدل سجل مشاريع زرزور سوفت المحلي بالكامل بـ "+restored.length+" مشروعاً من الملف. لا يمكن التراجع. هل تريد المتابعة؟"
+   :"Replace the entire local Zarzour Soft project register with "+restored.length+" projects from this file? This cannot be undone. Continue?";
+  if(!window.confirm(warning))return;
+  // A second tab may have written new records while the confirmation was open.
+  if(localStorage.getItem(key)!==raw){
+   show(lang==="ar"?"تغير السجل في نافذة أخرى. لم تُستورد النسخة؛ راجع أحدث البيانات.":"The register changed in another tab. Import was cancelled to protect newer records.",true);
+   return;
+  }
+  if(!save(restored,true))return;
+  items=restored;
+  if(editingId)cancelEdit();
+  render();
+  show(lang==="ar"?"تم استيراد "+restored.length+" مشروعاً محلياً بعد التحقق والتأكيد.":"Imported "+restored.length+" verified local projects.");
+ }catch{
+  show(lang==="ar"?"ملف النسخة الاحتياطية غير صالح، أو غير متاح، أو تجاوز الحد المسموح. لم تتغير المشاريع.":"Backup is invalid, unavailable or too large. Existing projects were not changed.",true);
+ }finally{importBusy=false;importFile.value=""}
 });
