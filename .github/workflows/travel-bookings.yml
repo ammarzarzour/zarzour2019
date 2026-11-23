@@ -1,0 +1,35 @@
+name: Validate local travel booking preview
+on:
+  push:
+    paths:
+      - 'docs/bookings.html'
+      - 'docs/bookings.mjs'
+      - 'docs/bookings-model.mjs'
+      - 'scripts/bookings.test.mjs'
+      - '.github/workflows/travel-bookings.yml'
+  pull_request:
+    paths:
+      - 'docs/bookings.html'
+      - 'docs/bookings.mjs'
+      - 'docs/bookings-model.mjs'
+      - 'scripts/bookings.test.mjs'
+      - '.github/workflows/travel-bookings.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test-booking-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax-check booking modules
+        run: |
+          node --check docs/bookings-model.mjs
+          node --check docs/bookings.mjs
+          node --check scripts/bookings.test.mjs
+      - name: Run local booking model and cross-tab regression tests
+        run: node --test scripts/bookings.test.mjs
