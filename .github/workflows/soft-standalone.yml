@@ -6,6 +6,7 @@ on:
       - 'docs/soft-standalone-deployment.md'
       - 'scripts/build-soft-standalone.mjs'
       - 'scripts/build-soft-standalone.test.mjs'
+      - 'scripts/soft-served-artifact.test.mjs'
       - 'scripts/projects-model.test.mjs'
       - 'scripts/test-soft-spaced-attributes.mjs'
       - '.github/workflows/soft-standalone.yml'
@@ -15,6 +16,7 @@ on:
       - 'docs/soft-standalone-deployment.md'
       - 'scripts/build-soft-standalone.mjs'
       - 'scripts/build-soft-standalone.test.mjs'
+      - 'scripts/soft-served-artifact.test.mjs'
       - 'scripts/projects-model.test.mjs'
       - 'scripts/test-soft-spaced-attributes.mjs'
       - '.github/workflows/soft-standalone.yml'
@@ -45,6 +47,8 @@ jobs:
         run: node --test scripts/test-soft-spaced-attributes.mjs
       - name: Build actual independent package
         run: node scripts/build-soft-standalone.mjs
+      - name: Smoke-test independent site over local HTTP
+        run: node --test scripts/soft-served-artifact.test.mjs
       - name: Verify exact allowlisted files and byte-for-byte source parity
         shell: bash
         run: |
