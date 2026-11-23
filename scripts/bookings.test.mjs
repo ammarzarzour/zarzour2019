@@ -43,7 +43,7 @@ test("filters by service, status and supplier reference", () => {
 
 
 test("updates a booking without adding a second record",()=>{
- const before=[normalizeBooking(valid,"a")]; const result=upsertBooking(before,{...valid,status:"completed"},"a");
+ const before=[normalizeBooking(valid,"a")]; const result=upsertBooking(before,{...valid,status:"completed"},"a",before[0]);
  assert.deepEqual(result.errors,[]);assert.equal(result.items.length,1);assert.equal(result.items[0].status,"completed");assert.equal(before[0].status,"confirmed");
 });
 test("rejects duplicate references case-insensitively without changing records",()=>{
@@ -61,7 +61,7 @@ test("rejects impossible dates and accepts actual leap days", () => {
 test("invalid booking dates cannot be saved or updated", () => {
   const before = [normalizeBooking(valid, "a")];
   for (const id of ["a", "b"]) {
-    const result = upsertBooking(before, { ...valid, reference: "BK-NEW", endDate: "2026-11-31" }, id);
+    const result = upsertBooking(before, { ...valid, reference: "BK-NEW", endDate: "2026-11-31" }, id, id==="a"?before[0]:undefined);
     assert.ok(result.errors.includes("endDate"));
     assert.equal(result.items, before);
   }
@@ -89,4 +89,46 @@ test("booking transition audit rejects impossible and noncanonical UTC timestamp
     assert.equal(audit.authorized, false);
     assert.ok(Object.isFrozen(audit));
   }
+});
+
+test("booking IDs never replace existing records on create",()=>{
+ const first=normalizeBooking(valid,"id-one"),before=[first];
+ const result=upsertBooking(before,{...valid,reference:"BK-OTHER"},"id-one");
+ assert.deepEqual(result.errors,["duplicateId"]);assert.strictEqual(result.items,before);
+ assert.equal(before[0].reference,"BK-201");
+});
+test("stale booking edit cannot overwrite newer data or recreate a deleted booking",()=>{
+ const original=normalizeBooking(valid,"id-one");
+ const changed={...original,notes:"Newer update"};
+ for(const latest of [[changed],[]]){
+  const result=upsertBooking(latest,{...valid,notes:"Stale overwrite"},"id-one",original);
+  assert.deepEqual(result.errors,["conflict"]);assert.strictEqual(result.items,latest);
+ }
+ const correct=upsertBooking([original],{...valid,notes:"Current edit"},"id-one",{...original});
+ assert.deepEqual(correct.errors,[]);assert.equal(correct.items[0].notes,"Current edit");
+ assert.equal(original.notes,"Synthetic test");
+});
+test("booking update snapshots must match their booking ID",()=>{
+ const original=normalizeBooking(valid,"id-one");
+ const other=normalizeBooking({...valid,reference:"BK-202"},"id-two");
+ const stored=[original,other];
+ for(const wrong of [other,{...original,id:"id-two"},null,{},[]]){
+  const result=upsertBooking(stored,{...valid,notes:"Overwrite"},"id-one",wrong);
+  assert.deepEqual(result.errors,["conflict"]);
+  assert.strictEqual(result.items,stored);
+ }
+});
+test("corrupt local booking registers fail closed without writing",()=>{
+ const validItem=normalizeBooking(valid,"id-one");
+ for(const stored of [
+  [{...validItem},{...validItem}],
+  [validItem,{...validItem,id:"another",reference:"bk-201"}],
+  [validItem,{id:"bad"}],
+  null,{},[]
+ ]){
+  const expected=stored===null?["bookingStore"]:Array.isArray(stored)&&stored.length===0?[]:["bookingStore"];
+  const result=upsertBooking(stored,{...valid,reference:"BK-NEW"},"new-id");
+  assert.deepEqual(result.errors,expected);
+  if(expected.length)assert.strictEqual(result.items,stored);
+ }
 });
