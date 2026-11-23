@@ -68,6 +68,9 @@ jobs:
           for file in index.html brief.html brief.mjs brief-model.mjs projects.html projects.mjs projects-model.mjs; do
             cmp "docs/soft/$file" "dist/zarzour-soft/$file"
           done
+      - name: Test Zarzour Soft standalone HTTP release
+        if: ${{ !cancelled() }}
+        run: node --test scripts/soft-served-artifact.test.mjs
       - name: Test partner verification register
         # Run remaining checks after a test fails; retain the job's failure status.
         if: ${{ !cancelled() }}
