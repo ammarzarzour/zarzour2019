@@ -10,11 +10,14 @@ function validDate(value) {
 export function validateBooking(input) {
   const errors = [];
   const reference = String(input.reference || "").trim();
-  const travelers = Number(input.travelers);
+  const rawTravelers = input.travelers;
+  const travelers = Number(rawTravelers);
+  const travelersFormatValid = (typeof rawTravelers === "number" && Number.isInteger(rawTravelers)) ||
+    (typeof rawTravelers === "string" && /^[0-9]+$/.test(rawTravelers.trim()));
   if (!/^[A-Za-z0-9/_-]{3,40}$/.test(reference)) errors.push("reference");
   if (!bookingServices.includes(input.service)) errors.push("service");
   if (!bookingStatuses.includes(input.status)) errors.push("status");
-  if (!Number.isInteger(travelers) || travelers < 1 || travelers > 500) errors.push("travelers");
+  if (!travelersFormatValid || !Number.isInteger(travelers) || travelers < 1 || travelers > 500) errors.push("travelers");
   if (!validDate(input.startDate)) errors.push("startDate");
   if (!validDate(input.endDate) || (validDate(input.startDate) && input.endDate < input.startDate)) errors.push("endDate");
   if (String(input.supplierReference || "").length > 80) errors.push("supplierReference");
