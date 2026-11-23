@@ -106,10 +106,10 @@ test("cross-tab storage events refresh the board without writes or lost edit inp
  const listener=source.slice(source.indexOf('if(typeof window!=="undefined"&&typeof window.addEventListener==="function")window.addEventListener("storage"'));
  assert.ok(listener.startsWith('if(typeof window'));
  const original=normalizeProject(valid,"one"),updated={...original,notes:"Other tab update"};
- let callback,renders=0,writes=0,notices=[],items=[original],editingId="one";
- const context=vm.createContext({...storageModel,key:"soft-register",lang:"en",items,editingId,
+ let callback,renders=0,writes=0,languageUpdates=0,notices=[],items=[original],editingId="one";
+ const context=vm.createContext({...storageModel,key:"soft-register",languageKey:"soft-language",lang:"en",items,editingId,
    window:{addEventListener:(name,fn)=>{assert.equal(name,"storage");callback=fn}},
-   render:()=>renders++,show:(message,error)=>notices.push({message,error}),save:()=>writes++});
+   applyLanguage:()=>{languageUpdates++;renders++},render:()=>renders++,show:(message,error)=>notices.push({message,error}),save:()=>writes++});
  vm.runInContext(listener,context);
  callback({key:"unrelated",newValue:"[]"});
  assert.equal(renders,0);
@@ -122,7 +122,14 @@ test("cross-tab storage events refresh the board without writes or lost edit inp
  callback({key:"soft-register",newValue:JSON.stringify([updated,{id:"bad"}])});
  assert.equal(context.items.length,1);assert.equal(renders,1);
  callback({key:null,newValue:null});
- assert.equal(context.items.length,0);assert.equal(renders,2);assert.equal(writes,0);
+ assert.equal(context.items.length,0);assert.equal(renders,3);assert.equal(writes,0);
+ assert.equal(context.lang,"ar","clearing storage must reset the language preference safely");
+ assert.equal(languageUpdates,1);
+ callback({key:"soft-language",newValue:"en"});
+ assert.equal(context.lang,"en","language events must synchronize other browser tabs");
+ assert.equal(languageUpdates,2);assert.equal(renders,4);assert.equal(writes,0,"language sync must not echo writes");
+ callback({key:"unrelated",newValue:"ar"});
+ assert.equal(context.lang,"en");assert.equal(renders,4);
 });
 
 test("deleting incomplete historical completed records checks the latest row without requiring release readiness",()=>{
