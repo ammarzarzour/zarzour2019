@@ -13,6 +13,7 @@ node --check docs/soft/projects.mjs
 node --check docs/soft/projects-model.mjs
 node --test scripts/build-soft-standalone.test.mjs
 node --test scripts/projects-model.test.mjs
+node --test scripts/soft-projects.test.mjs
 node --test scripts/test-soft-spaced-attributes.mjs
 node scripts/build-soft-standalone.mjs
 node --test scripts/soft-served-artifact.test.mjs
@@ -32,6 +33,18 @@ The dedicated [Zarzour Soft workflow](../../.github/workflows/soft-standalone.ym
 4. Test Arabic and English, RTL/LTR switching, device-language preference on a fresh browser profile, and persistence of a manually selected language.
 5. Check browser network requests: the preview must not rely on Zarzour Travel assets, APIs, authentication, or Supabase credentials. Do not add real customer data.
 6. Record the deployed URL, exact Git commit, CI run URL, artifact identity, and date in the release notes **after** checking them. Do not claim a successful production deployment based only on a build.
+
+## Moving local project drafts to a separate hosting origin
+
+The project delivery board stores drafts only in the browser's Zarzour Soft localStorage namespace. Browser storage does **not** transfer automatically to a different domain or hosting origin.
+
+1. On the old board, use **Export projects as JSON / تصدير المشاريع كملف JSON**. Keep the local file private.
+2. Open the verified independent Soft site on its own HTTPS origin and choose **Import project backup / استيراد نسخة احتياطية**.
+3. Select the downloaded JSON file. The importer checks the schema version, full record integrity, duplicate references, count and file size before prompting.
+4. Review the confirmation carefully: importing replaces the entire current local project register on that browser, and cancellation leaves it untouched. It refuses to overwrite a newer register changed in another tab while the confirmation was open.
+5. Verify the projects and readiness indicators after import, then store the backup securely or delete it using your normal device controls.
+
+These controls never upload the JSON backup to a server. They are **not** a shared multiuser database, identity service or server-side migration.
 
 ## Operational boundaries
 
