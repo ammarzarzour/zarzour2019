@@ -7,6 +7,7 @@ on:
       - 'docs/soft/**'
       - 'scripts/build-soft-standalone.mjs'
       - 'scripts/build-soft-standalone.test.mjs'
+      - 'scripts/soft-served-artifact.test.mjs'
       - '.github/workflows/soft-release.yml'
   workflow_dispatch:
 
@@ -29,6 +30,8 @@ jobs:
         run: node --test scripts/build-soft-standalone.test.mjs
       - name: Build independent static site
         run: node scripts/build-soft-standalone.mjs
+      - name: Serve independent release and smoke-test every page
+        run: node --test scripts/soft-served-artifact.test.mjs
       - name: Verify exact allowlisted release contents
         run: |
           node --input-type=module <<'NODE'
