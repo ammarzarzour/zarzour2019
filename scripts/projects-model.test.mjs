@@ -244,3 +244,20 @@ test('incomplete completed projects cannot be restored or exported as completed'
   })), /Invalid, empty or duplicated project backup/);
   assert.deepEqual(importProjectBackup(JSON.stringify(validBackup)), [ready]);
 });
+
+
+test('live edits reject incomplete completed records instead of preserving invalid project stores', () => {
+  const incomplete = { ...valid, id: 'soft-incomplete-existing', status: 'completed', stage: 'release', tasksDone: 2 };
+  const before = [incomplete];
+  const create = upsertProject(before, { ...valid, reference: 'SOFT-NEW' }, 'soft-new');
+  assert.deepEqual(create.errors, ['projectStore']);
+  assert.equal(create.items, before);
+  const edit = upsertProject(before, { ...valid, notes: 'edited' }, incomplete.id, incomplete);
+  assert.deepEqual(edit.errors, ['projectStore']);
+  assert.equal(edit.items, before);
+  assert.equal(before[0], incomplete);
+  const ready = { ...incomplete, acceptanceReady: true, securityReviewed: true, bilingualReviewed: true };
+  const accepted = upsertProject([ready], { ...valid, reference: 'SOFT-NEW' }, 'soft-new');
+  assert.deepEqual(accepted.errors, []);
+  assert.equal(accepted.items.length, 2);
+});
