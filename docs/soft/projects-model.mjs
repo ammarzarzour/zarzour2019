@@ -9,6 +9,34 @@ const plus=(today,days)=>new Date(Date.parse(today+"T00:00:00Z")+days*86400000).
 export function projectMetrics(items,today){const open=items.filter(x=>x.status!=="completed"||deliveryReadiness(x).blockers.length>0),taskTotal=items.reduce((n,x)=>n+x.tasksTotal,0),taskDone=items.reduce((n,x)=>n+x.tasksDone,0);return {total:items.length,active:items.filter(x=>x.status==="active").length,blocked:items.filter(x=>x.status==="blocked").length,overdue:open.filter(x=>x.targetDate<today).length,dueSoon:open.filter(x=>x.targetDate>=today&&x.targetDate<=plus(today,7)).length,releaseReady:items.filter(x=>["active","completed"].includes(x.status)&&["release","maintenance"].includes(x.stage)&&!deliveryReadiness(x).blockers.length).length,progress:taskTotal?Math.round(taskDone/taskTotal*100):0}}
 export function filterProjects(items,{query="",type="",status=""}={}){const needle=query.trim().toLocaleLowerCase();return items.filter(x=>(!type||x.type===type)&&(!status||x.status===status)&&(!needle||x.reference.toLocaleLowerCase().includes(needle)||x.notes.toLocaleLowerCase().includes(needle)))}
 
+
+export const PROJECT_BACKUP_SCHEMA="zarzour-soft-projects";
+export const PROJECT_BACKUP_MAX_BYTES=262144;
+export const PROJECT_BACKUP_MAX_ITEMS=500;
+function intactProjects(value){
+ if(!Array.isArray(value)||value.length>PROJECT_BACKUP_MAX_ITEMS)return false;
+ return safeProjects(value).length===value.length;
+}
+// A deterministic, portable export; never includes Travel data, browser tokens or credentials.
+export function exportProjectBackup(items, exportedAt=new Date().toISOString()){
+ if(!intactProjects(items))throw new Error("Invalid project register");
+ if(typeof exportedAt!=="string"||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(exportedAt)||!Number.isFinite(Date.parse(exportedAt)))throw new Error("Invalid export timestamp");
+ const text=JSON.stringify({schema:PROJECT_BACKUP_SCHEMA,version:1,exportedAt,projects:safeProjects(items)},null,2);
+ if(new TextEncoder().encode(text).byteLength>PROJECT_BACKUP_MAX_BYTES)throw new Error("Project backup exceeds safe size");
+ return text;
+}
+export function importProjectBackup(text){
+ if(typeof text!=="string"||new TextEncoder().encode(text).byteLength>PROJECT_BACKUP_MAX_BYTES)throw new Error("Project backup exceeds safe size");
+ let data;
+ try{data=JSON.parse(text)}catch{throw new Error("Invalid project backup JSON")}
+ if(!data||typeof data!=="object"||Array.isArray(data)||data.schema!==PROJECT_BACKUP_SCHEMA||data.version!==1||
+    typeof data.exportedAt!=="string"||!Array.isArray(data.projects)||
+    !["exportedAt","projects","schema","version"].every(key=>Object.hasOwn(data,key))||
+    Object.keys(data).length!==4)throw new Error("Unsupported project backup format");
+ if(data.projects.length===0||!intactProjects(data.projects))throw new Error("Invalid, empty or duplicated project backup");
+ return safeProjects(data.projects);
+}
+
 export function upsertProject(items,input,id,expected){
  if(typeof id!=="string"||!id.trim()||id.length>120)return {errors:["projectId"],items};
  if(!Array.isArray(items)||items.some(x=>!x||typeof x!=="object"||Array.isArray(x)||typeof x.id!=="string"||!x.id.trim()||x.id.length>120||validateProject(x).length))return {errors:["projectStore"],items};
