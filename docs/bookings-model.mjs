@@ -61,11 +61,17 @@ export function bookingReadiness(item) {
   return { required, blockers, ready: blockers.length === 0 };
 }
 
+// Reject noncanonical identifiers before they enter storage or edit paths.
+function validBookingId(id) {
+  return typeof id === "string" && id.length > 0 && id.length <= 120 &&
+    id === id.trim() && !/[\u0000-\u001F\u007F]/.test(id);
+}
+
 export function safeBookings(value) {
   if (!Array.isArray(value)) return [];
   const ids = new Set(), references = new Set();
   return value.filter(item => {
-    if (!item || typeof item.id !== "string" || !item.id.trim() || item.id.length > 120 || ids.has(item.id) || validateBooking(item).length) return false;
+    if (!item || !validBookingId(item.id) || ids.has(item.id) || validateBooking(item).length) return false;
     const reference = String(item.reference).trim().toUpperCase();
     if (references.has(reference)) return false;
     ids.add(item.id); references.add(reference); return true;
@@ -100,7 +106,7 @@ export function filterBookings(items, { query = "", service = "", status = "" } 
 export function upsertBooking(items, input, id, expected) {
   // Each modification must be based on the exact booking that was opened.
   // Creation cannot silently overwrite an existing local record with the same ID.
-  if (typeof id !== "string" || !id.trim() || id.length > 120) return { errors: ["bookingId"], items };
+  if (!validBookingId(id)) return { errors: ["bookingId"], items };
   if (!Array.isArray(items) || safeBookings(items).length !== items.length) return { errors: ["bookingStore"], items };
   const current = items.find(item => item.id === id);
   if (expected !== undefined) {
