@@ -8,6 +8,8 @@ function validDate(value) {
 }
 
 export function validateBooking(input) {
+  // Malformed browser storage or programmatic callers must fail closed, not crash.
+  if (!input || typeof input !== "object" || Array.isArray(input)) return ["booking"];
   const errors = [];
   const reference = String(input.reference || "").trim();
   const rawTravelers = input.travelers;
