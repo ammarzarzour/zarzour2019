@@ -265,3 +265,18 @@ test("oversized stored booking IDs are excluded consistently with edit validatio
   assert.deepEqual(accepted.errors, []);
   assert.equal(accepted.items.length, 2);
 });
+
+test("rejects noncanonical booking IDs in storage and writes", () => {
+  const good = normalizeBooking(valid, "booking-good");
+  const stored = [good];
+  for (const id of [" booking-good", "booking-good ", "booking\\nline", "booking\\u0000null", "booking\\tpart", "   "]) {
+    const bad = { ...good, id, reference: "BK-OTHER" };
+    assert.deepEqual(safeBookings([good, bad]), [good], JSON.stringify(id));
+    const result = upsertBooking(stored, { ...valid, reference: "BK-OTHER" }, id);
+    assert.deepEqual(result.errors, ["bookingId"], JSON.stringify(id));
+    assert.strictEqual(result.items, stored);
+  }
+  const created = upsertBooking(stored, { ...valid, reference: "BK-OTHER" }, "booking-new");
+  assert.deepEqual(created.errors, []);
+  assert.equal(created.items.length, 2);
+});
