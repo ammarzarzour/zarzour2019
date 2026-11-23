@@ -15,7 +15,10 @@ node --test scripts/build-soft-standalone.test.mjs
 node --test scripts/projects-model.test.mjs
 node --test scripts/test-soft-spaced-attributes.mjs
 node scripts/build-soft-standalone.mjs
+node --test scripts/soft-served-artifact.test.mjs
 ```
+
+The new `soft-served-artifact.test.mjs` check serves the **already built** bundle through a loopback-only HTTP server and confirms every approved page and module loads from its own root and subpath, while Travel pages and API paths are absent. It proves release portability under a local test server, **not** that an independent public hostname or hosting account has been provisioned.
 
 The deployable directory is `dist/zarzour-soft/`. It must contain **exactly** these seven top-level files: `index.html`, `brief.html`, `brief.mjs`, `brief-model.mjs`, `projects.html`, `projects.mjs`, `projects-model.mjs`. Do not deploy the parent travel site or its scripts as part of this package.
 
