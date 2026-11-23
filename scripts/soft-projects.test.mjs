@@ -1,4 +1,4 @@
-import test from "node:test";import assert from "node:assert/strict";import {deliveryReadiness,filterProjects,localToday,normalizeProject,projectMetrics,safeProjects,upsertProject,validateProject} from "../docs/soft/projects-model.mjs";
+import test from "node:test";import assert from "node:assert/strict";import {deliveryReadiness,filterProjects,localToday,normalizeProject,projectMetrics,safeProjects,upsertProject,validateProject,exportProjectBackup,importProjectBackup,PROJECT_BACKUP_MAX_BYTES,PROJECT_BACKUP_MAX_ITEMS} from "../docs/soft/projects-model.mjs";
 const valid={reference:"SOFT-101",type:"website",stage:"build",status:"active",targetDate:"2099-03-01",tasksTotal:"12",tasksDone:"7",acceptanceReady:"on",securityReviewed:"on",bilingualReviewed:"on",notes:"Synthetic independent software project"};
 test("deadline calendar uses local date and rolls forward without a stale UTC day",()=>{
  const before=new Date(2026,10,17,23,59,59),after=new Date(2026,10,18,0,0,1);
@@ -103,7 +103,7 @@ test("row actions preserve newer projects and edit forms on conflict or storage 
 
 test("cross-tab storage events refresh the board without writes or lost edit inputs",()=>{
  const source=readFileSync(new URL("../docs/soft/projects.mjs",import.meta.url),"utf8");
- const listener=source.slice(source.indexOf('if(typeof window!=="undefined"&&typeof window.addEventListener==="function")window.addEventListener("storage"'));
+ const listener=source.slice(source.indexOf('if(typeof window!=="undefined"&&typeof window.addEventListener==="function")window.addEventListener("storage"'),source.indexOf("// Explicit, local-only handoff"));
  assert.ok(listener.startsWith('if(typeof window'));
  const original=normalizeProject(valid,"one"),updated={...original,notes:"Other tab update"};
  let callback,renders=0,writes=0,languageUpdates=0,notices=[],items=[original],editingId="one";
@@ -149,4 +149,117 @@ test("deleting incomplete historical completed records checks the latest row wit
   if(scenario==="unchanged"){assert.deepEqual(JSON.parse(stored),[]);assert.equal(cancelled,1)}
   else{assert.equal(stored,before);assert.equal(cancelled,0);assert.ok(notices.length)}
  }
+});
+
+
+test("portable Soft JSON backup roundtrips strict versioned project data",()=>{
+ const first=normalizeProject(valid,"soft-1");
+ const second=normalizeProject({...valid,reference:"SOFT-102",notes:"ملاحظات بالعربية"},"soft-2");
+ const stamp="2026-11-23T12:30:45.000Z";
+ const data=exportProjectBackup([first,second],stamp);
+ const json=JSON.parse(data);
+ assert.equal(json.schema,"zarzour-soft-projects");
+ assert.equal(json.version,1);
+ assert.equal(json.exportedAt,stamp);
+ assert.deepEqual(json.projects,[first,second]);
+ assert.deepEqual(importProjectBackup(data),[first,second]);
+ assert.notStrictEqual(importProjectBackup(data)[0],first);
+ assert.equal(data,exportProjectBackup([first,second],stamp),"identical data and timestamp produce identical backups");
+});
+
+test("project backup rejects malformed, duplicated, oversized and untrusted schemas",()=>{
+ const one=normalizeProject(valid,"p1");
+ const good=JSON.parse(exportProjectBackup([one],"2026-11-23T12:30:45.000Z"));
+ const cases=[
+  "",null,"{",JSON.stringify(null),JSON.stringify([]),JSON.stringify({...good,schema:"zarzour-travel-bookings"}),
+  JSON.stringify({...good,version:2}),JSON.stringify({...good,projects:[]}),
+  JSON.stringify({...good,projects:[one,{...one,id:"p2"}]}),
+  JSON.stringify({...good,projects:[one,{...one,id:"p2",reference:"soft-101"}]}),
+  JSON.stringify({...good,projects:[{id:"bad"}]}),JSON.stringify({...good,extra:"secrets"}),
+  JSON.stringify({...good,projects:Array.from({length:PROJECT_BACKUP_MAX_ITEMS+1},(_,i)=>({...one,id:"id-"+i,reference:"SOFT-"+i}))}),
+  JSON.stringify({...good,projects:[{...one,notes:"😀".repeat(PROJECT_BACKUP_MAX_BYTES/2)}]})
+ ];
+ for(const source of cases)assert.throws(()=>importProjectBackup(source),Error);
+ assert.throws(()=>exportProjectBackup([{...one},{...one,id:"p2"}]),/Invalid project register/);
+ assert.throws(()=>exportProjectBackup(Array.from({length:PROJECT_BACKUP_MAX_ITEMS+1},(_,i)=>({...one,id:"s-"+i,reference:"SOFT-"+i}))),/Invalid project register/);
+ assert.throws(()=>exportProjectBackup([one],"not-a-date"),/timestamp/);
+});
+
+test("Soft backup controls import only after user confirmation and reject conflicting browser writes",async()=>{
+ const html=readFileSync(new URL("../docs/soft/projects.html",import.meta.url),"utf8");
+ assert.match(html,/id="export-projects"[^>]*data-ar=/);
+ assert.match(html,/id="import-projects"[^>]*data-ar=/);
+ assert.match(html,/id="import-project-file"[^>]*type="file"/);
+ const source=readFileSync(new URL("../docs/soft/projects.mjs",import.meta.url),"utf8");
+ const tail=source.slice(source.indexOf("// Explicit, local-only handoff"));
+ assert.ok(tail.startsWith("// Explicit, local-only handoff"));
+ const first=normalizeProject(valid,"id-one");
+ const restored=normalizeProject({...valid,reference:"SOFT-102",notes:"A portable release"},"id-two");
+ const backup=exportProjectBackup([restored],"2026-11-23T12:30:45.000Z");
+ const listeners={},notifications=[],buttons={};
+ let stored=JSON.stringify([first]),writes=0,confirmed=false,editCancelled=0,renders=0,clicks=0,revokeCount=0;
+ const input={value:"",files:[{size:new TextEncoder().encode(backup).byteLength,text:async()=>backup}],click(){clicks++},addEventListener(kind,fn){listeners["file-"+kind]=fn}};
+ const document={
+  getElementById:id=>{
+   if(id==="import-project-file")return input;
+   return buttons[id]||(buttons[id]={addEventListener:(kind,fn)=>{listeners[id+"-"+kind]=fn}});
+  },
+  createElement:()=>({click(){clicks++},remove(){}}),
+  body:{append(){}}
+ };
+ const localStorage={getItem:key=>key==="zarzour-soft-projects-v1"?stored:null,
+  setItem:(key,value)=>{assert.equal(key,"zarzour-soft-projects-v1");stored=value;writes++}};
+ const context=vm.createContext({document,localStorage,lang:"en",key:"zarzour-soft-projects-v1",items:[first],editingId:"id-one",
+  exportProjectBackup,importProjectBackup,PROJECT_BACKUP_MAX_BYTES,localToday,Date,Blob,URL:{createObjectURL:()=> "blob:local",revokeObjectURL:()=>revokeCount++},
+  safeProjects,render:()=>renders++,cancelEdit:()=>editCancelled++,show:(text,error)=>notifications.push({text,error}),
+  window:{confirm:()=>confirmed},save:next=>{localStorage.setItem("zarzour-soft-projects-v1",JSON.stringify(next));return true}});
+ vm.runInContext(tail,context);
+ listeners["import-projects-click"]();
+ assert.equal(clicks,1,"button opens local JSON file picker");
+ await listeners["file-change"]();
+ assert.equal(writes,0,"cancelled confirmation must never overwrite current projects");
+ assert.equal(input.value,"","file picker clears after cancellation");
+ confirmed=true;
+ await listeners["file-change"]();
+ assert.equal(writes,1);
+ assert.deepEqual(JSON.parse(stored),[restored]);
+ assert.equal(context.items[0].id,"id-two");
+ assert.equal(editCancelled,1);
+ assert.equal(renders,1);
+ assert.match(notifications.at(-1).text,/Imported 1 verified/);
+ listeners["export-projects-click"]();
+ assert.equal(revokeCount,1);
+ assert.equal(clicks,2,"export is a local file download");
+ assert.match(notifications.at(-1).text,/no data was sent/);
+ // Storage is changed while the confirm dialogue is open: refuse replacement.
+ const modified=JSON.stringify([{...restored,notes:"Newer tab edit"}]);
+ context.window.confirm=()=>{stored=modified;return true};
+ await listeners["file-change"]();
+ assert.equal(stored,modified);
+ assert.equal(writes,1);
+ assert.match(notifications.at(-1).text,/another tab/);
+});
+
+test("invalid Soft project backup never changes local records",async()=>{
+ const source=readFileSync(new URL("../docs/soft/projects.mjs",import.meta.url),"utf8");
+ const tail=source.slice(source.indexOf("// Explicit, local-only handoff"));
+ const first=normalizeProject(valid,"old");
+ const stored=JSON.stringify([first]);
+ let writes=0,confirmations=0,notices=[];
+ const listeners={},file={value:"selected",files:[{size:42,text:async()=>"{bad-json"}],click(){},addEventListener:(kind,fn)=>listeners[kind]=fn};
+ const document={getElementById:id=>id==="import-project-file"?file:{addEventListener(){}},body:{append(){}},createElement:()=>({click(){},remove(){}})};
+ const context=vm.createContext({document,localStorage:{getItem:()=>stored,setItem:()=>writes++},lang:"en",key:"zarzour-soft-projects-v1",items:[first],editingId:null,
+  exportProjectBackup,importProjectBackup,PROJECT_BACKUP_MAX_BYTES,localToday,Date,Blob,URL,
+  safeProjects,render:()=>{},cancelEdit:()=>{},show:(text,error)=>notices.push({text,error}),
+  window:{confirm:()=>{confirmations++;return true}},save:()=>{writes++;return true}});
+ vm.runInContext(tail,context);
+ await listeners.change();
+ assert.equal(writes,0);
+ assert.equal(confirmations,0);
+ assert.match(notices[0].text,/invalid/);
+ file.files=[{size:PROJECT_BACKUP_MAX_BYTES+1,text:async()=>{throw Error("Should not read oversize file")}}];
+ await listeners.change();
+ assert.equal(writes,0);
+ assert.equal(confirmations,0);
+ assert.equal(file.value,"");
 });
