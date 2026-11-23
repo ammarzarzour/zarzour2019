@@ -83,10 +83,25 @@ export function filterBookings(items, { query = "", service = "", status = "" } 
 }
 
 
-export function upsertBooking(items, input, id) {
+export function upsertBooking(items, input, id, expected) {
+  // Each modification must be based on the exact booking that was opened.
+  // Creation cannot silently overwrite an existing local record with the same ID.
+  if (typeof id !== "string" || !id.trim() || id.length > 120) return { errors: ["bookingId"], items };
+  if (!Array.isArray(items) || safeBookings(items).length !== items.length) return { errors: ["bookingStore"], items };
+  const current = items.find(item => item.id === id);
+  if (expected !== undefined) {
+    if (!current || !expected || typeof expected !== "object" || Array.isArray(expected) ||
+        expected.id !== id || validateBooking(expected).length ||
+        JSON.stringify(normalizeBooking(current, id)) !== JSON.stringify(normalizeBooking(expected, id))) {
+      return { errors: ["conflict"], items };
+    }
+  } else if (current) {
+    return { errors: ["duplicateId"], items };
+  }
   const errors = validateBooking(input);
+  if (errors.length) return { errors, items };
   const normalized = normalizeBooking(input, id);
   if (items.some(item => item.id !== id && item.reference.trim().toUpperCase() === normalized.reference)) errors.push("duplicateReference");
   if (errors.length) return { errors, items };
-  return { errors: [], items: items.some(item => item.id === id) ? items.map(item => item.id === id ? normalized : item) : [normalized, ...items] };
+  return { errors: [], items: current ? items.map(item => item.id === id ? normalized : item) : [normalized, ...items] };
 }
