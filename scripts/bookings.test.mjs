@@ -43,7 +43,7 @@ test("filters by service, status and supplier reference", () => {
 
 
 test("updates a booking without adding a second record",()=>{
- const before=[normalizeBooking(valid,"a")]; const result=upsertBooking(before,{...valid,status:"completed"},"a");
+ const before=[normalizeBooking(valid,"a")]; const result=upsertBooking(before,{...valid,status:"completed"},"a",before[0]);
  assert.deepEqual(result.errors,[]);assert.equal(result.items.length,1);assert.equal(result.items[0].status,"completed");assert.equal(before[0].status,"confirmed");
 });
 test("rejects duplicate references case-insensitively without changing records",()=>{
@@ -61,7 +61,7 @@ test("rejects impossible dates and accepts actual leap days", () => {
 test("invalid booking dates cannot be saved or updated", () => {
   const before = [normalizeBooking(valid, "a")];
   for (const id of ["a", "b"]) {
-    const result = upsertBooking(before, { ...valid, reference: "BK-NEW", endDate: "2026-11-31" }, id);
+    const result = upsertBooking(before, { ...valid, reference: "BK-NEW", endDate: "2026-11-31" }, id, id==="a"?before[0]:undefined);
     assert.ok(result.errors.includes("endDate"));
     assert.equal(result.items, before);
   }
@@ -89,4 +89,109 @@ test("booking transition audit rejects impossible and noncanonical UTC timestamp
     assert.equal(audit.authorized, false);
     assert.ok(Object.isFrozen(audit));
   }
+});
+
+test("booking IDs never replace existing records on create",()=>{
+ const first=normalizeBooking(valid,"id-one"),before=[first];
+ const result=upsertBooking(before,{...valid,reference:"BK-OTHER"},"id-one");
+ assert.deepEqual(result.errors,["duplicateId"]);assert.strictEqual(result.items,before);
+ assert.equal(before[0].reference,"BK-201");
+});
+test("stale booking edit cannot overwrite newer data or recreate a deleted booking",()=>{
+ const original=normalizeBooking(valid,"id-one");
+ const changed={...original,notes:"Newer update"};
+ for(const latest of [[changed],[]]){
+  const result=upsertBooking(latest,{...valid,notes:"Stale overwrite"},"id-one",original);
+  assert.deepEqual(result.errors,["conflict"]);assert.strictEqual(result.items,latest);
+ }
+ const correct=upsertBooking([original],{...valid,notes:"Current edit"},"id-one",{...original});
+ assert.deepEqual(correct.errors,[]);assert.equal(correct.items[0].notes,"Current edit");
+ assert.equal(original.notes,"Synthetic test");
+});
+test("booking update snapshots must match their booking ID",()=>{
+ const original=normalizeBooking(valid,"id-one");
+ const other=normalizeBooking({...valid,reference:"BK-202"},"id-two");
+ const stored=[original,other];
+ for(const wrong of [other,{...original,id:"id-two"},null,{},[]]){
+  const result=upsertBooking(stored,{...valid,notes:"Overwrite"},"id-one",wrong);
+  assert.deepEqual(result.errors,["conflict"]);
+  assert.strictEqual(result.items,stored);
+ }
+});
+test("corrupt local booking registers fail closed without writing",()=>{
+ const validItem=normalizeBooking(valid,"id-one");
+ for(const stored of [
+  [{...validItem},{...validItem}],
+  [validItem,{...validItem,id:"another",reference:"bk-201"}],
+  [validItem,{id:"bad"}],
+  null,{},[]
+ ]){
+  const expected=stored===null?["bookingStore"]:Array.isArray(stored)&&stored.length===0?[]:["bookingStore"];
+  const result=upsertBooking(stored,{...valid,reference:"BK-NEW"},"new-id");
+  assert.deepEqual(result.errors,expected);
+  if(expected.length)assert.strictEqual(result.items,stored);
+ }
+});
+
+
+test("booking interface preserves newer cross-tab data, unsaved form values and delete confirmation",async()=>{
+ const {readFileSync}=await import("node:fs");
+ const {runInNewContext}=await import("node:vm");
+ const source=readFileSync(new URL("../docs/bookings.mjs",import.meta.url),"utf8").replace(/^import[^\n]+\n/,"");
+ const original=normalizeBooking(valid,"id-one");
+ const other=normalizeBooking({...valid,reference:"BK-202"},"id-two");
+ let stored=JSON.stringify([original,other]),writes=0,confirmAllowed=true,blockWrites=false;
+ let input={...valid,notes:"My pending edit"};
+ const elements=new Map(),listeners={};
+ class Node {
+  constructor(id){this.id=id;this.children=[];this.listeners={};this.dataset={};this.value="";this.textContent="";this.hidden=false;this.name="";this.type="text";}
+  addEventListener(k,fn){this.listeners[k]=fn;}
+  append(...children){this.children.push(...children);}
+  replaceChildren(...children){this.children=children;}
+  scrollIntoView(){}
+  reset(){}
+ }
+ const el=id=>{if(!elements.has(id))elements.set(id,new Node(id));return elements.get(id)};
+ el("booking-form").elements=Object.keys(valid).map(name=>{const item=new Node(name);item.name=name;item.type=typeof valid[name]==="boolean"?"checkbox":"text";return item});
+ const document={documentElement:{},getElementById:el,querySelectorAll:()=>[],createElement:name=>new Node(name)};
+ const localStorage={
+  getItem:k=>k==="zarzour-bookings-v1"?stored:null,
+  setItem:(k,value)=>{if(blockWrites)throw Error("storage blocked");if(k==="zarzour-bookings-v1"){stored=String(value);writes++}}
+ };
+ const window={confirm:()=>confirmAllowed,addEventListener:(key,fn)=>listeners[key]=fn};
+ runInNewContext(source,{document,localStorage,window,navigator:{language:"en-US"},Date,Math,FormData:class{constructor(){return Object.entries(input)}},
+  bookingMetrics,bookingReadiness,filterBookings,normalizeBooking,safeBookings,validateBooking,upsertBooking});
+ const body=el("booking-body"),form=el("booking-form");
+ body.listeners.click({target:{dataset:{editId:"id-one"}}});
+ stored=JSON.stringify([{...original,notes:"Newer tab edit"},other]);
+ const snapshot=stored;
+ form.listeners.submit({preventDefault(){}});
+ assert.equal(stored,snapshot,"stale form must never replace newer stored booking");
+ assert.match(el("message").textContent,/another tab/);
+ assert.equal(form.elements.find(x=>x.name==="notes").value,original.notes,"current form must not reset on conflict");
+ // An edit remains open after a storage event and gets a visible conflict warning.
+ listeners.storage({key:"zarzour-bookings-v1",storageArea:localStorage});
+ assert.match(el("message").textContent,/another tab/);
+ body.listeners.click({target:{dataset:{editId:"id-one"}}});
+ form.listeners.submit({preventDefault(){}});
+ assert.equal(JSON.parse(stored)[0].notes,"My pending edit","current snapshot saves valid edits");
+ assert.equal(JSON.parse(stored).length,2);
+ const saved=stored;
+ confirmAllowed=false;
+ body.listeners.click({target:{dataset:{id:"id-one"}}});
+ assert.equal(stored,saved,"cancelled deletion changes nothing");
+ confirmAllowed=true;
+ stored=JSON.stringify([{...JSON.parse(saved)[0],notes:"Changed again"},other]);
+ const newer=stored;
+ body.listeners.click({target:{dataset:{id:"id-one"}}});
+ assert.equal(stored,newer,"stale deletion must not remove a newer record");
+ body.listeners.click({target:{dataset:{id:"id-one"}}});
+ assert.equal(JSON.parse(stored).length,1,"current confirmed deletion removes exactly one record");
+ assert.equal(JSON.parse(stored)[0].id,"id-two");
+ assert.ok(writes>=2);
+ blockWrites=true;
+ input={...valid,reference:"BK-NEW",notes:"Keep input on failure"};
+ form.listeners.submit({preventDefault(){}});
+ assert.equal(JSON.parse(stored).length,1,"write failure must not mutate the register");
+ assert.match(el("message").textContent,/Local storage failed/);
 });
