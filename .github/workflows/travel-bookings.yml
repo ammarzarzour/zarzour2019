@@ -6,6 +6,8 @@ on:
       - 'docs/bookings.mjs'
       - 'docs/bookings-model.mjs'
       - 'scripts/bookings.test.mjs'
+      - 'scripts/booking-lifecycle.mjs'
+      - 'scripts/booking-transition-audit.mjs'
       - '.github/workflows/travel-bookings.yml'
   pull_request:
     paths:
@@ -13,6 +15,8 @@ on:
       - 'docs/bookings.mjs'
       - 'docs/bookings-model.mjs'
       - 'scripts/bookings.test.mjs'
+      - 'scripts/booking-lifecycle.mjs'
+      - 'scripts/booking-transition-audit.mjs'
       - '.github/workflows/travel-bookings.yml'
   workflow_dispatch:
 permissions:
@@ -31,5 +35,7 @@ jobs:
           node --check docs/bookings-model.mjs
           node --check docs/bookings.mjs
           node --check scripts/bookings.test.mjs
+          node --check scripts/booking-lifecycle.mjs
+          node --check scripts/booking-transition-audit.mjs
       - name: Run local booking model and cross-tab regression tests
         run: node --test scripts/bookings.test.mjs
