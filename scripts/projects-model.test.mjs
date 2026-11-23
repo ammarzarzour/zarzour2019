@@ -220,3 +220,12 @@ test('portable Soft backups reject impossible or noncanonical UTC timestamps wit
     assert.throws(() => importProjectBackup(JSON.stringify({ ...backup, exportedAt: timestamp })), /Unsupported project backup format/);
   }
 });
+
+
+test('portable Soft export refuses an empty register that import cannot restore', () => {
+  const timestamp = '2026-11-23T12:34:56.000Z';
+  assert.throws(() => exportProjectBackup([], timestamp), /Invalid or empty project register/);
+  const item = upsertProject([], valid, 'soft-backup-roundtrip').items[0];
+  const exported = exportProjectBackup([item], timestamp);
+  assert.deepEqual(importProjectBackup(exported), [item]);
+});
