@@ -49,7 +49,7 @@ export function importProjectBackup(text){
 
 export function upsertProject(items,input,id,expected){
  if(typeof id!=="string"||!id.trim()||id.length>120)return {errors:["projectId"],items};
- if(!Array.isArray(items)||items.some(x=>!x||typeof x!=="object"||Array.isArray(x)||typeof x.id!=="string"||!x.id.trim()||x.id.length>120||validateProject(x).length))return {errors:["projectStore"],items};
+ if(!Array.isArray(items)||items.some(x=>!x||typeof x!=="object"||Array.isArray(x)||typeof x.id!=="string"||!x.id.trim()||x.id.length>120||validateProject(x).length||(x.status==="completed"&&deliveryReadiness(normalizeProject(x,x.id)).blockers.length)))return {errors:["projectStore"],items};
  const ids=new Set(),references=new Set();
  for(const existing of items){const ref=existing.reference.trim().toUpperCase();if(ids.has(existing.id)||references.has(ref))return {errors:["projectStore"],items};ids.add(existing.id);references.add(ref);}
  if(expected!==undefined){const current=items.find(x=>x.id===id);if(!current||!expected||typeof expected!=="object"||expected.id!==id||validateProject(current).length||validateProject(expected).length||JSON.stringify(normalizeProject(current,id))!==JSON.stringify(normalizeProject(expected,id)))return {errors:["conflict"],items:items};}
