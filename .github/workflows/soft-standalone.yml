@@ -8,6 +8,7 @@ on:
       - 'scripts/build-soft-standalone.test.mjs'
       - 'scripts/soft-served-artifact.test.mjs'
       - 'scripts/projects-model.test.mjs'
+      - 'scripts/soft-projects.test.mjs'
       - 'scripts/test-soft-spaced-attributes.mjs'
       - '.github/workflows/soft-standalone.yml'
   pull_request:
@@ -18,6 +19,7 @@ on:
       - 'scripts/build-soft-standalone.test.mjs'
       - 'scripts/soft-served-artifact.test.mjs'
       - 'scripts/projects-model.test.mjs'
+      - 'scripts/soft-projects.test.mjs'
       - 'scripts/test-soft-spaced-attributes.mjs'
       - '.github/workflows/soft-standalone.yml'
   workflow_dispatch:
@@ -43,6 +45,8 @@ jobs:
         run: node --test scripts/build-soft-standalone.test.mjs
       - name: Test standalone project model validation
         run: node --test scripts/projects-model.test.mjs
+      - name: Test Soft project board and cross-tab language regressions
+        run: node --test scripts/soft-projects.test.mjs
       - name: Test standalone HTML form and network boundaries
         run: node --test scripts/test-soft-spaced-attributes.mjs
       - name: Build actual independent package
