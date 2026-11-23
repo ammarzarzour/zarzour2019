@@ -35,6 +35,18 @@ test("booking preview serves bilingual HTML and local modules over HTTP", async 
     assert.match(html, /lang="ar" dir="rtl"/);
     assert.match(html, /data-en=/);
     assert.match(html, /لا تُدخل أسماء مسافرين/);
+    // Preview must remain a local-only reference register, not a live booking/payment form.
+    assert.match(html, /<form\\b[^>]*id="booking-form"[^>]*>/i);
+    assert.doesNotMatch(html, /<form\\b[^>]*\\baction\\s*=/i);
+    assert.doesNotMatch(html, /<form\\b[^>]*\\bmethod\\s*=\\s*["']?post/i);
+    assert.deepEqual(
+      [...html.matchAll(/<script\\b[^>]*\\bsrc="([^"]+)"[^>]*>/gi)].map(match => match[1]),
+      ["bookings.mjs"],
+      "Only the local booking module may execute"
+    );
+    assert.doesNotMatch(html, /<base\\b|<meta\\b[^>]*http-equiv\\s*=\\s*["']?refresh/i);
+    assert.doesNotMatch(html, /<iframe\\b|<link\\b[^>]*rel\\s*=\\s*["']?preload/i);
+    assert.match(html, /no pricing, payments or ticket issuance/i);
     for (const name of ["bookings.mjs", "bookings-model.mjs"]) {
       const response = await fetch(base + "/" + name);
       assert.equal(response.status, 200, name);
