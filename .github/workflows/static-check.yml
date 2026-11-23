@@ -7,6 +7,7 @@ on:
       - 'scripts/**'
       - 'supabase/migrations/**'
       - '.github/workflows/static-check.yml'
+      - '.github/workflows/zarzour-pages.yml'
   pull_request:
     branches: [master]
     paths:
@@ -14,6 +15,7 @@ on:
       - 'scripts/**'
       - 'supabase/migrations/**'
       - '.github/workflows/static-check.yml'
+      - '.github/workflows/zarzour-pages.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -29,6 +31,9 @@ jobs:
         # Run remaining checks after a test fails; retain the job's failure status.
         if: ${{ !cancelled() }}
         run: node scripts/check-static-site.mjs
+      - name: Guard Pages artifact upload and retryable deploy boundary
+        if: ${{ !cancelled() }}
+        run: node --test scripts/pages-workflow.test.mjs
       - name: Test trip request workflows
         # Run remaining checks after a test fails; retain the job's failure status.
         if: ${{ !cancelled() }}
