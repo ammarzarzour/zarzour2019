@@ -280,3 +280,18 @@ test("rejects noncanonical booking IDs in storage and writes", () => {
   assert.deepEqual(created.errors, []);
   assert.equal(created.items.length, 2);
 });
+
+test("rejects control characters in supplier references before saving or restoring", () => {
+  const before = [normalizeBooking(valid, "existing")];
+  for (const character of ["\n", "\r", "\t", "\u0000", "\u007f"]) {
+    const supplierReference = "SUP" + character + "88";
+    const payload = { ...valid, reference: "BK-NEW", supplierReference };
+    assert.ok(validateBooking(payload).includes("supplierReference"));
+    const result = upsertBooking(before, payload, "new-id");
+    assert.ok(result.errors.includes("supplierReference"));
+    assert.strictEqual(result.items, before);
+    const restored = safeBookings([{ ...before[0], supplierReference }]);
+    assert.deepEqual(restored, []);
+  }
+  assert.deepEqual(validateBooking({ ...valid, supplierReference: "SUP-88/AB" }), []);
+});
