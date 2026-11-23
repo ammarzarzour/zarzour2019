@@ -48,6 +48,24 @@ test("rejects structured supplier references and notes without modifying booking
   assert.deepEqual(validateBooking({ ...valid, supplierReference: "", notes: "" }), []);
 });
 
+test("rejects malformed readiness flags without mutating local bookings", () => {
+  const before = [normalizeBooking(valid, "existing")];
+  for (const field of ["supplierConfirmed", "documentsChecked", "itineraryIssued"]) {
+    for (const value of ["false", "true", 0, 1, [], {}, "yes"]) {
+      const input = { ...valid, reference: "BK-NEW", [field]: value };
+      assert.ok(validateBooking(input).includes(field), field + ": " + String(value));
+      const result = upsertBooking(before, input, "new-id");
+      assert.ok(result.errors.includes(field));
+      assert.strictEqual(result.items, before);
+    }
+    for (const value of [true, false, "on", undefined, null]) {
+      assert.deepEqual(validateBooking({ ...valid, [field]: value }), []);
+    }
+  }
+  const stored = normalizeBooking(valid, "stored");
+  assert.deepEqual(safeBookings([{ ...stored, supplierConfirmed: "true" }]), []);
+});
+
 test("rejects an end date before the start", () => assert.deepEqual(validateBooking({ ...valid, endDate: "2026-11-11" }), ["endDate"]));
 
 test("normalizes references, numbers and checkboxes", () => {
