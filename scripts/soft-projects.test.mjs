@@ -103,7 +103,7 @@ test("row actions preserve newer projects and edit forms on conflict or storage 
 
 test("cross-tab storage events refresh the board without writes or lost edit inputs",()=>{
  const source=readFileSync(new URL("../docs/soft/projects.mjs",import.meta.url),"utf8");
- const listener=source.slice(source.indexOf('if(typeof window!=="undefined"&&typeof window.addEventListener==="function")window.addEventListener("storage"'));
+ const listener=source.slice(source.indexOf('if(typeof window!=="undefined"&&typeof window.addEventListener==="function")window.addEventListener("storage"'),source.indexOf("// Explicit, local-only handoff"));
  assert.ok(listener.startsWith('if(typeof window'));
  const original=normalizeProject(valid,"one"),updated={...original,notes:"Other tab update"};
  let callback,renders=0,writes=0,languageUpdates=0,notices=[],items=[original],editingId="one";
