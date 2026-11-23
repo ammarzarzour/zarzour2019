@@ -30,7 +30,7 @@ export function validateBooking(input) {
   if (!validDate(input.endDate) || (validDate(input.startDate) && input.endDate < input.startDate)) errors.push("endDate");
   // Reject structured values instead of silently persisting "[object Object]" or array text.
   if (input.supplierReference != null && typeof input.supplierReference !== "string" ||
-      String(input.supplierReference || "").length > 80) errors.push("supplierReference");
+      (String(input.supplierReference || "").length > 80 || /[\u0000-\u001F\u007F]/.test(input.supplierReference || ""))) errors.push("supplierReference");
   if (input.notes != null && typeof input.notes !== "string" ||
       String(input.notes || "").length > 500) errors.push("notes");
   return [...new Set(errors)];
