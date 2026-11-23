@@ -9,6 +9,7 @@ on:
       - 'scripts/soft-served-artifact.test.mjs'
       - 'scripts/projects-model.test.mjs'
       - 'scripts/soft-projects.test.mjs'
+      - 'scripts/soft-projects.test.mjs'
       - 'scripts/test-soft-spaced-attributes.mjs'
       - '.github/workflows/soft-standalone.yml'
   pull_request:
@@ -19,6 +20,7 @@ on:
       - 'scripts/build-soft-standalone.test.mjs'
       - 'scripts/soft-served-artifact.test.mjs'
       - 'scripts/projects-model.test.mjs'
+      - 'scripts/soft-projects.test.mjs'
       - 'scripts/soft-projects.test.mjs'
       - 'scripts/test-soft-spaced-attributes.mjs'
       - '.github/workflows/soft-standalone.yml'
@@ -49,6 +51,8 @@ jobs:
         run: node --test scripts/soft-projects.test.mjs
       - name: Test standalone HTML form and network boundaries
         run: node --test scripts/test-soft-spaced-attributes.mjs
+      - name: Test portable local project backup and confirmed import
+        run: node --test scripts/soft-projects.test.mjs
       - name: Build actual independent package
         run: node scripts/build-soft-standalone.mjs
       - name: Smoke-test independent site over local HTTP
