@@ -6,6 +6,7 @@ on:
       - 'docs/bookings.mjs'
       - 'docs/bookings-model.mjs'
       - 'scripts/bookings.test.mjs'
+      - 'scripts/bookings-served-preview.test.mjs'
       - 'scripts/booking-lifecycle.mjs'
       - 'scripts/booking-transition-audit.mjs'
       - '.github/workflows/travel-bookings.yml'
@@ -15,6 +16,7 @@ on:
       - 'docs/bookings.mjs'
       - 'docs/bookings-model.mjs'
       - 'scripts/bookings.test.mjs'
+      - 'scripts/bookings-served-preview.test.mjs'
       - 'scripts/booking-lifecycle.mjs'
       - 'scripts/booking-transition-audit.mjs'
       - '.github/workflows/travel-bookings.yml'
@@ -35,7 +37,10 @@ jobs:
           node --check docs/bookings-model.mjs
           node --check docs/bookings.mjs
           node --check scripts/bookings.test.mjs
+          node --check scripts/bookings-served-preview.test.mjs
           node --check scripts/booking-lifecycle.mjs
           node --check scripts/booking-transition-audit.mjs
       - name: Run local booking model and cross-tab regression tests
         run: node --test scripts/bookings.test.mjs
+      - name: Smoke-test bilingual booking preview on isolated HTTP host
+        run: node --test scripts/bookings-served-preview.test.mjs
