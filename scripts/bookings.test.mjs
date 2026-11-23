@@ -34,6 +34,20 @@ test("rejects non-decimal, boolean and malformed traveler counts without saving"
   }
 });
 
+test("rejects structured supplier references and notes without modifying bookings", () => {
+  const before = [normalizeBooking(valid, "existing")];
+  for (const field of ["supplierReference", "notes"]) {
+    for (const value of [{ code: "X" }, ["X"], 42, true]) {
+      const input = { ...valid, reference: "BK-NEW", [field]: value };
+      assert.ok(validateBooking(input).includes(field));
+      const result = upsertBooking(before, input, "new-id");
+      assert.ok(result.errors.includes(field));
+      assert.strictEqual(result.items, before);
+    }
+  }
+  assert.deepEqual(validateBooking({ ...valid, supplierReference: "", notes: "" }), []);
+});
+
 test("rejects an end date before the start", () => assert.deepEqual(validateBooking({ ...valid, endDate: "2026-11-11" }), ["endDate"]));
 
 test("normalizes references, numbers and checkboxes", () => {
