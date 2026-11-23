@@ -20,6 +20,12 @@ export function validateBooking(input) {
   if (!bookingServices.includes(input.service)) errors.push("service");
   if (!bookingStatuses.includes(input.status)) errors.push("status");
   if (!travelersFormatValid || !Number.isInteger(travelers) || travelers < 1 || travelers > 500) errors.push("travelers");
+  // Only explicit checkbox values are valid; never silently coerce malformed stored flags.
+  for (const field of ["supplierConfirmed", "documentsChecked", "itineraryIssued"]) {
+    if (input[field] !== undefined && input[field] !== null &&
+        input[field] !== true && input[field] !== false &&
+        input[field] !== "on") errors.push(field);
+  }
   if (!validDate(input.startDate)) errors.push("startDate");
   if (!validDate(input.endDate) || (validDate(input.startDate) && input.endDate < input.startDate)) errors.push("endDate");
   // Reject structured values instead of silently persisting "[object Object]" or array text.
