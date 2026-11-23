@@ -9,6 +9,18 @@ test("validates operational booking fields", () => {
   assert.deepEqual(validateBooking({ ...valid, reference: "!", service: "other", travelers: 0 }), ["reference", "service", "travelers"]);
 });
 
+
+test("malformed booking payloads fail closed without throwing or writing", () => {
+  const before = [normalizeBooking(valid, "existing")];
+  for (const payload of [null, undefined, false, 0, "invalid", []]) {
+    assert.deepEqual(validateBooking(payload), ["booking"]);
+    const result = upsertBooking(before, payload, "new-id");
+    assert.deepEqual(result.errors, ["booking"]);
+    assert.strictEqual(result.items, before);
+  }
+  assert.deepEqual(safeBookings([null, false, [], before[0]]), before);
+});
+
 test("rejects non-decimal, boolean and malformed traveler counts without saving", () => {
   const before = [normalizeBooking(valid, "existing")];
   for (const travelers of [true, false, "1e2", "0x10", "2.5", "Infinity", "  ", [], {}, null]) {
