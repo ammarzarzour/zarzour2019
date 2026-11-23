@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { validateProject, upsertProject, safeProjects, projectMetrics } from '../docs/soft/projects-model.mjs';
+import { validateProject, upsertProject, safeProjects, projectMetrics, exportProjectBackup, importProjectBackup } from '../docs/soft/projects-model.mjs';
 
 const valid = {
   reference: 'SOFT-001', type: 'website', stage: 'discovery',
@@ -200,4 +200,23 @@ test('delivery checklist flags reject malformed values without silently coercing
   assert.equal(created.items[0].acceptanceReady, true);
   assert.equal(created.items[0].securityReviewed, true);
   assert.equal(created.items[0].bilingualReviewed, false);
+});
+
+test('portable Soft backups reject impossible or noncanonical UTC timestamps without importing records', () => {
+  const item = upsertProject([], valid, 'soft-backup-1').items[0];
+  const good = '2026-11-23T12:34:56.000Z';
+  const backup = JSON.parse(exportProjectBackup([item], good));
+  assert.equal(importProjectBackup(JSON.stringify(backup)).length, 1);
+  for (const timestamp of [
+    '2026-02-30T12:34:56.000Z',
+    '2026-11-23T25:34:56.000Z',
+    '2026-11-23T12:60:56.000Z',
+    '2026-11-23T12:34:60.000Z',
+    '2026-11-23T12:34:56Z',
+    '2026-11-23T12:34:56.000+00:00',
+    'not-a-date', null
+  ]) {
+    assert.throws(() => exportProjectBackup([item], timestamp), /Invalid export timestamp/);
+    assert.throws(() => importProjectBackup(JSON.stringify({ ...backup, exportedAt: timestamp })), /Unsupported project backup format/);
+  }
 });
