@@ -25,7 +25,7 @@ function intactProjects(value){
 }
 // A deterministic, portable export; never includes Travel data, browser tokens or credentials.
 export function exportProjectBackup(items, exportedAt=new Date().toISOString()){
- if(!intactProjects(items))throw new Error("Invalid project register");
+ if(!intactProjects(items)||items.length===0)throw new Error("Invalid or empty project register");
  if(!validBackupTimestamp(exportedAt))throw new Error("Invalid export timestamp");
  const text=JSON.stringify({schema:PROJECT_BACKUP_SCHEMA,version:1,exportedAt,projects:safeProjects(items)},null,2);
  if(new TextEncoder().encode(text).byteLength>PROJECT_BACKUP_MAX_BYTES)throw new Error("Project backup exceeds safe size");
