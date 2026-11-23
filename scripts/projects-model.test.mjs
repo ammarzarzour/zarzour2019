@@ -229,3 +229,18 @@ test('portable Soft export refuses an empty register that import cannot restore'
   const exported = exportProjectBackup([item], timestamp);
   assert.deepEqual(importProjectBackup(exported), [item]);
 });
+
+test('incomplete completed projects cannot be restored or exported as completed', () => {
+  const completed = { ...valid, id: 'soft-incomplete', status: 'completed', stage: 'release', tasksDone: 2 };
+  const ready = { ...completed, id: 'soft-ready', reference: 'SOFT-READY',
+    acceptanceReady: true, securityReviewed: true, bilingualReviewed: true };
+  assert.deepEqual(safeProjects([completed]), []);
+  assert.deepEqual(safeProjects([completed, ready]), [ready]);
+  const timestamp = '2026-11-23T12:34:56.000Z';
+  assert.throws(() => exportProjectBackup([completed], timestamp), /Invalid or empty project register/);
+  const validBackup = JSON.parse(exportProjectBackup([ready], timestamp));
+  assert.throws(() => importProjectBackup(JSON.stringify({
+    ...validBackup, projects: [completed]
+  })), /Invalid, empty or duplicated project backup/);
+  assert.deepEqual(importProjectBackup(JSON.stringify(validBackup)), [ready]);
+});
