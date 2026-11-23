@@ -10,6 +10,12 @@ export function projectMetrics(items,today){const open=items.filter(x=>x.status!
 export function filterProjects(items,{query="",type="",status=""}={}){const needle=query.trim().toLocaleLowerCase();return items.filter(x=>(!type||x.type===type)&&(!status||x.status===status)&&(!needle||x.reference.toLocaleLowerCase().includes(needle)||x.notes.toLocaleLowerCase().includes(needle)))}
 
 
+// Require canonical, real UTC instants for portable backup metadata.
+function validBackupTimestamp(value){
+ if(typeof value!=="string"||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$/.test(value))return false;
+ const time=Date.parse(value);
+ return Number.isFinite(time)&&new Date(time).toISOString()===value;
+}
 export const PROJECT_BACKUP_SCHEMA="zarzour-soft-projects";
 export const PROJECT_BACKUP_MAX_BYTES=262144;
 export const PROJECT_BACKUP_MAX_ITEMS=500;
@@ -20,7 +26,7 @@ function intactProjects(value){
 // A deterministic, portable export; never includes Travel data, browser tokens or credentials.
 export function exportProjectBackup(items, exportedAt=new Date().toISOString()){
  if(!intactProjects(items))throw new Error("Invalid project register");
- if(typeof exportedAt!=="string"||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(exportedAt)||!Number.isFinite(Date.parse(exportedAt)))throw new Error("Invalid export timestamp");
+ if(!validBackupTimestamp(exportedAt))throw new Error("Invalid export timestamp");
  const text=JSON.stringify({schema:PROJECT_BACKUP_SCHEMA,version:1,exportedAt,projects:safeProjects(items)},null,2);
  if(new TextEncoder().encode(text).byteLength>PROJECT_BACKUP_MAX_BYTES)throw new Error("Project backup exceeds safe size");
  return text;
@@ -30,7 +36,7 @@ export function importProjectBackup(text){
  let data;
  try{data=JSON.parse(text)}catch{throw new Error("Invalid project backup JSON")}
  if(!data||typeof data!=="object"||Array.isArray(data)||data.schema!==PROJECT_BACKUP_SCHEMA||data.version!==1||
-    typeof data.exportedAt!=="string"||!Array.isArray(data.projects)||
+    !validBackupTimestamp(data.exportedAt)||!Array.isArray(data.projects)||
     !["exportedAt","projects","schema","version"].every(key=>Object.hasOwn(data,key))||
     Object.keys(data).length!==4)throw new Error("Unsupported project backup format");
  if(data.projects.length===0||!intactProjects(data.projects))throw new Error("Invalid, empty or duplicated project backup");
