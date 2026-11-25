@@ -4,9 +4,8 @@ export function validateProject(input){if(!input||typeof input!=="object"||Array
 export function normalizeProject(input,id="soft-project-"+Date.now()){return {id,reference:input.reference.trim(),type:input.type,stage:input.stage,status:input.status,targetDate:input.targetDate,tasksTotal:Number(input.tasksTotal),tasksDone:Number(input.tasksDone),acceptanceReady:input.acceptanceReady===true||input.acceptanceReady==="on",securityReviewed:input.securityReviewed===true||input.securityReviewed==="on",bilingualReviewed:input.bilingualReviewed===true||input.bilingualReviewed==="on",notes:input.notes.trim()}}
 export function deliveryReadiness(item){const fields=["acceptanceReady","securityReviewed","bilingualReviewed"],blockers=fields.filter(x=>item[x]!==true);if(item.tasksDone!==item.tasksTotal)blockers.push("tasksComplete");return {blockers,score:Math.round((4-blockers.length)/4*100)}}
 export function safeProjects(value){if(!Array.isArray(value))return [];const seen=new Set(),references=new Set(),out=[];for(const item of value){if(!item||typeof item!=="object"||Array.isArray(item)||typeof item.id!=="string"||!item.id.trim()||item.id.length>120||seen.has(item.id)||validateProject(item).length)continue;const normalized=normalizeProject(item,item.id),reference=normalized.reference.toUpperCase();
-// A completed project must satisfy the same release-readiness rule as a new edit.
-// Otherwise a restored backup can display an incomplete project as completed.
-if(normalized.status==="completed"&&deliveryReadiness(normalized).blockers.length)continue;
+// Preserve historical records; metrics treat incomplete completed projects as open.
+// New writes still enforce delivery readiness.
 if(references.has(reference))continue;seen.add(item.id);references.add(reference);out.push(normalized)}return out}
 export function localToday(date=new Date()){const year=date.getFullYear(),month=String(date.getMonth()+1).padStart(2,"0"),day=String(date.getDate()).padStart(2,"0");return `${year}-${month}-${day}`}
 const plus=(today,days)=>new Date(Date.parse(today+"T00:00:00Z")+days*86400000).toISOString().slice(0,10);
@@ -29,7 +28,7 @@ function intactProjects(value){
 }
 // A deterministic, portable export; never includes Travel data, browser tokens or credentials.
 export function exportProjectBackup(items, exportedAt=new Date().toISOString()){
- if(!intactProjects(items)||items.length===0)throw new Error("Invalid or empty project register");
+ if(!intactProjects(items)||items.length===0)throw new Error("Invalid project register (invalid or empty)");
  if(!validBackupTimestamp(exportedAt))throw new Error("Invalid export timestamp");
  const text=JSON.stringify({schema:PROJECT_BACKUP_SCHEMA,version:1,exportedAt,projects:safeProjects(items)},null,2);
  if(new TextEncoder().encode(text).byteLength>PROJECT_BACKUP_MAX_BYTES)throw new Error("Project backup exceeds safe size");
@@ -49,7 +48,7 @@ export function importProjectBackup(text){
 
 export function upsertProject(items,input,id,expected){
  if(typeof id!=="string"||!id.trim()||id.length>120)return {errors:["projectId"],items};
- if(!Array.isArray(items)||items.some(x=>!x||typeof x!=="object"||Array.isArray(x)||typeof x.id!=="string"||!x.id.trim()||x.id.length>120||validateProject(x).length||(x.status==="completed"&&deliveryReadiness(normalizeProject(x,x.id)).blockers.length)))return {errors:["projectStore"],items};
+ if(!Array.isArray(items)||items.some(x=>!x||typeof x!=="object"||Array.isArray(x)||typeof x.id!=="string"||!x.id.trim()||x.id.length>120||validateProject(x).length))return {errors:["projectStore"],items};
  const ids=new Set(),references=new Set();
  for(const existing of items){const ref=existing.reference.trim().toUpperCase();if(ids.has(existing.id)||references.has(ref))return {errors:["projectStore"],items};ids.add(existing.id);references.add(ref);}
  if(expected!==undefined){const current=items.find(x=>x.id===id);if(!current||!expected||typeof expected!=="object"||expected.id!==id||validateProject(current).length||validateProject(expected).length||JSON.stringify(normalizeProject(current,id))!==JSON.stringify(normalizeProject(expected,id)))return {errors:["conflict"],items:items};}
