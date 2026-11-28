@@ -1,3 +1,4 @@
+import { summarizeReturnOperations } from "./return-tracking.mjs";
 import { calculateMetrics, safePrograms } from "./operations-model.mjs";
 import { bookingMetrics, bookingReadiness, safeBookings } from "./bookings-model.mjs";
 import { visaMetrics, safeVisaCases } from "./visas-model.mjs";
@@ -40,6 +41,46 @@ function read(definition) {
   return readDashboardModule(definition, { getItem: key => localStorage.getItem(key) });
 }
 
+
+// Fixed, synthetic records only. This preview never reads local customer registers.
+const returnDemoRecords = Object.freeze([
+  {status:"departed",expectedReturn:"2026-12-30"},
+  {status:"return_due",expectedReturn:"2026-12-20"},
+  {status:"follow_up",expectedReturn:"2026-11-20"},
+  {status:"departed",expectedReturn:"2026-12-31"},
+  {status:"departed",expectedReturn:"2027-01-05"},
+  {status:"planned",expectedReturn:"2027-01-10"},
+  {status:"returned",expectedReturn:"2026-12-24",actualReturn:"2026-12-24"}
+].map(Object.freeze));
+function renderReturnDemo(){
+  const date = document.getElementById("return-demo-date").value;
+  const metrics = document.getElementById("return-demo-metrics");
+  const error = document.getElementById("return-demo-error");
+  const result = summarizeReturnOperations(returnDemoRecords,date);
+  metrics.replaceChildren();
+  error.textContent = "";
+  const ar = lang === "ar";
+  if(!result.ok){
+    error.textContent = ar ? "تعذر إعداد الملخص لهذا التاريخ؛ اختر تاريخاً صالحاً لا يسبق العودة المسجلة في المثال." : "Cannot summarize this date. Choose a valid date no earlier than the recorded sample return.";
+    return;
+  }
+  const rows = [
+    [ar?"المتأخرون":"Overdue",result.deadlines.overdue],
+    [ar?"العودة اليوم":"Due today",result.deadlines.dueToday],
+    [ar?"خلال 7 أيام":"Next 7 days",result.deadlines.dueNextSevenDays],
+    [ar?"تأخير 1–7 أيام":"1–7 days late",result.escalations.oneToSevenDays],
+    [ar?"تأخير 8–30 يوماً":"8–30 days late",result.escalations.eightToThirtyDays],
+    [ar?"تأخير أكثر من 30 يوماً":"Over 30 days late",result.escalations.overThirtyDays],
+    [ar?"تمت العودة":"Returned",result.queue.counts.returned]
+  ];
+  for(const [label,value] of rows){
+    const stat=document.createElement("span"),strong=document.createElement("b");
+    strong.textContent=String(value);
+    stat.append(strong,document.createTextNode(label));
+    metrics.append(stat);
+  }
+}
+
 function render() {
   const summary = summarizeModules(definitions.map(read));
   const t = words[lang];
@@ -53,6 +94,7 @@ function render() {
   }
   const board = document.getElementById("module-board");
   board.replaceChildren();
+  renderReturnDemo();
   for (const item of summary.modules) {
     const card = document.createElement("article"); card.className = `module ${item.health}`;
     const heading = document.createElement("h2"); heading.textContent = t[item.id];
@@ -72,6 +114,7 @@ function render() {
 
 document.getElementById("language").addEventListener("click", () => { lang = lang === "ar" ? "en" : "ar"; try { localStorage.setItem("zarzour-language", lang); } catch {} render(); });
 document.getElementById("refresh").addEventListener("click", render);
+document.getElementById("return-demo-date").addEventListener("input", renderReturnDemo);
 render();
 
 
