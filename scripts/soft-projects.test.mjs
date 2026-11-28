@@ -1,4 +1,4 @@
-import test from "node:test";import assert from "node:assert/strict";import {deliveryReadiness,filterProjects,localToday,normalizeProject,projectMetrics,safeProjects,upsertProject,validateProject,exportProjectBackup,importProjectBackup,PROJECT_BACKUP_MAX_BYTES,PROJECT_BACKUP_MAX_ITEMS} from "../docs/soft/projects-model.mjs";
+import test from "node:test";import assert from "node:assert/strict";import {deliveryReadiness,filterProjects,localToday,normalizeProject,projectMetrics,safeProjects,upsertProject,validateProject,exportProjectBackup,importProjectBackup,PROJECT_BACKUP_MAX_BYTES,PROJECT_BACKUP_MAX_ITEMS, mergeProjectBackup } from "../docs/soft/projects-model.mjs";
 const valid={reference:"SOFT-101",type:"website",stage:"build",status:"active",targetDate:"2099-03-01",tasksTotal:"12",tasksDone:"7",acceptanceReady:"on",securityReviewed:"on",bilingualReviewed:"on",notes:"Synthetic independent software project"};
 test("deadline calendar uses local date and rolls forward without a stale UTC day",()=>{
  const before=new Date(2026,10,17,23,59,59),after=new Date(2026,10,18,0,0,1);
@@ -262,4 +262,21 @@ test("invalid Soft project backup never changes local records",async()=>{
  assert.equal(writes,0);
  assert.equal(confirmations,0);
  assert.equal(file.value,"");
+});
+
+test("non-destructive Soft migration merges new records, skips identical copies and rejects conflicts",()=>{
+ const a=normalizeProject(valid,"merge-a"),b=normalizeProject({...valid,reference:"SOFT-MERGE-B"},"merge-b");
+ const original=Object.freeze([Object.freeze(a)]);
+ const merged=mergeProjectBackup(original,[a,b]);
+ assert.deepEqual(merged,{items:[a,b],added:1,skipped:1});
+ assert.deepEqual(original,[a]);
+ assert.deepEqual(mergeProjectBackup([], [b]),{items:[b],added:1,skipped:0});
+ assert.deepEqual(mergeProjectBackup(original,[a]),{items:[a],added:0,skipped:1});
+ assert.throws(()=>mergeProjectBackup(original,[{...a,notes:"different"}]),/conflict/);
+ assert.throws(()=>mergeProjectBackup(original,[{...a,id:"different"}]),/conflict/);
+ assert.throws(()=>mergeProjectBackup(original,[{...a,reference:"SOFT-OTHER"}]),/conflict/);
+ assert.throws(()=>mergeProjectBackup(original,[b,{...a,notes:"different"}]),/conflict/);
+ assert.throws(()=>mergeProjectBackup(original,[]),/Invalid project register/);
+ assert.deepEqual(importProjectBackup(exportProjectBackup(merged.items,"2026-11-28T12:00:00.000Z")),[a,b]);
+ assert.deepEqual(original,[a]);
 });
