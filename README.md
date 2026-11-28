@@ -94,3 +94,7 @@ audit logging are implemented and tested.
 ## Offline return deadline overview (2026-11-21)
 
 `summarizeReturnDeadlines(records, today)` in `scripts/return-tracking.mjs` produces identity-free counts of active trips that are overdue, due today, due within the next seven UTC calendar days, or due later. Planned and completed trips are excluded. Invalid records reject the entire batch. This is a pure, read-only planning helper, not an alert service or a production traveler tracker; it never stores personal data or changes a booking/status. Tests: `node --test scripts/return-tracking.test.mjs`. Live use still requires operator authentication, approved RLS, audit logging, and privacy review.
+
+## Return tracking dashboard sample
+
+The Travel control center (`docs/dashboard.html`) now shows a separate bilingual return-tracking panel using seven fixed fictional groups and an editable review date. It displays deadline and escalation counts through the shared `docs/return-tracking.mjs` rules. The existing `scripts/return-tracking.mjs` entry point re-exports those rules; run `node --test scripts/return-tracking.test.mjs`. Sample metrics are not included in the local register totals. The panel never reads traveler records, sends alerts, writes data, or performs payments. It is not a production tracker. Authentication, approved access policies and audit logging are still prerequisites for live integration.
