@@ -60,3 +60,24 @@ export function upsertProject(items,input,id,expected){
  if(item.status==="completed"&&deliveryReadiness(item).blockers.length)return {errors:["readiness"],items};
  return {errors:[],items:items.some(x=>x.id===id)?items.map(x=>x.id===id?item:x):[item,...items]};
 }
+
+// Non-destructive migration: identical records are skipped; any conflicting ID
+// or reference rejects the entire merge. Historical records remain intact.
+export function mergeProjectBackup(current, restored){
+ if(!intactProjects(current)||!intactProjects(restored)||!restored.length)throw new Error("Invalid project register");
+ const result=safeProjects(current), incoming=safeProjects(restored);
+ const ids=new Map(result.map(item=>[item.id,item]));
+ const refs=new Map(result.map(item=>[item.reference.toUpperCase(),item]));
+ let added=0, skipped=0;
+ for(const item of incoming){
+  const sameId=ids.get(item.id), sameRef=refs.get(item.reference.toUpperCase());
+  if(sameId||sameRef){
+   if(sameId&&sameRef===sameId&&JSON.stringify(sameId)===JSON.stringify(item)){skipped++;continue}
+   throw new Error("Project backup conflict");
+  }
+  result.push(item);ids.set(item.id,item);refs.set(item.reference.toUpperCase(),item);added++;
+ }
+ // A merged register must itself remain portable.
+ exportProjectBackup(result,"2000-01-01T00:00:00.000Z");
+ return {items:result,added,skipped};
+}
