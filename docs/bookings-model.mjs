@@ -11,11 +11,12 @@ export function validateBooking(input) {
   // Malformed browser storage or programmatic callers must fail closed, not crash.
   if (!input || typeof input !== "object" || Array.isArray(input)) return ["booking"];
   const errors = [];
-  const reference = String(input.reference || "").trim();
+  // Validate primitive types before coercion; malformed restored records must not become valid references or throw.
+  const reference = typeof input.reference === "string" ? input.reference.trim() : "";
   const rawTravelers = input.travelers;
-  const travelers = Number(rawTravelers);
   const travelersFormatValid = (typeof rawTravelers === "number" && Number.isInteger(rawTravelers)) ||
     (typeof rawTravelers === "string" && /^[0-9]+$/.test(rawTravelers.trim()));
+  const travelers = travelersFormatValid ? Number(rawTravelers) : NaN;
   if (!/^[A-Za-z0-9/_-]{3,40}$/.test(reference)) errors.push("reference");
   if (!bookingServices.includes(input.service)) errors.push("service");
   if (!bookingStatuses.includes(input.status)) errors.push("status");
