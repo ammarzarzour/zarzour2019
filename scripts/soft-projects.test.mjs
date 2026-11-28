@@ -211,7 +211,7 @@ test("Soft backup controls import only after user confirmation and reject confli
   setItem:(key,value)=>{assert.equal(key,"zarzour-soft-projects-v1");stored=value;writes++}};
  const context=vm.createContext({document,localStorage,lang:"en",key:"zarzour-soft-projects-v1",items:[first],editingId:"id-one",
   exportProjectBackup,importProjectBackup,PROJECT_BACKUP_MAX_BYTES,localToday,Date,Blob,URL:{createObjectURL:()=> "blob:local",revokeObjectURL:()=>revokeCount++},
-  safeProjects,render:()=>renders++,cancelEdit:()=>editCancelled++,show:(text,error)=>notifications.push({text,error}),
+  safeProjects,mergeProjectBackup,render:()=>renders++,cancelEdit:()=>editCancelled++,show:(text,error)=>notifications.push({text,error}),
   window:{confirm:()=>confirmed},save:next=>{localStorage.setItem("zarzour-soft-projects-v1",JSON.stringify(next));return true}});
  vm.runInContext(tail,context);
  listeners["import-projects-click"]();
@@ -238,6 +238,21 @@ test("Soft backup controls import only after user confirmation and reject confli
  assert.equal(stored,modified);
  assert.equal(writes,1);
  assert.match(notifications.at(-1).text,/another tab/);
+ // Non-destructive migration has its own explicit action.
+ stored=JSON.stringify([first]);context.window.confirm=()=>false;
+ listeners["merge-projects-click"]();
+ await listeners["file-change"]();
+ assert.deepEqual(JSON.parse(stored),[first]);
+ assert.equal(writes,1);
+ context.window.confirm=()=>true;
+ listeners["merge-projects-click"]();
+ await listeners["file-change"]();
+ assert.deepEqual(JSON.parse(stored),[first,restored]);
+ assert.equal(writes,2);
+ listeners["merge-projects-click"]();
+ await listeners["file-change"]();
+ assert.equal(writes,2);
+ assert.match(notifications.at(-1).text,/No new projects/);
 });
 
 test("invalid Soft project backup never changes local records",async()=>{
