@@ -295,3 +295,24 @@ test("rejects control characters in supplier references before saving or restori
   }
   assert.deepEqual(validateBooking({ ...valid, supplierReference: "SUP-88/AB" }), []);
 });
+
+test("rejects non-string booking references and nonprimitive traveler values before coercion", () => {
+  const before = [normalizeBooking(valid, "existing")];
+  for (const reference of [123, ["BK-NEW"], { toString: null }, Symbol("BK-NEW")]) {
+    const input = { ...valid, reference };
+    assert.deepEqual(validateBooking(input), ["reference"]);
+    const result = upsertBooking(before, input, "new-id");
+    assert.deepEqual(result.errors, ["reference"]);
+    assert.strictEqual(result.items, before);
+    assert.deepEqual(safeBookings([{ ...before[0], reference }]), []);
+  }
+  for (const travelers of [{ valueOf: null, toString: null }, Symbol("4")]) {
+    const input = { ...valid, reference: "BK-NEW", travelers };
+    assert.deepEqual(validateBooking(input), ["travelers"]);
+    const result = upsertBooking(before, input, "new-id");
+    assert.deepEqual(result.errors, ["travelers"]);
+    assert.strictEqual(result.items, before);
+    assert.deepEqual(safeBookings([{ ...before[0], travelers }]), []);
+  }
+  assert.deepEqual(validateBooking({ ...valid, reference: " bk-new ", travelers: " 4 " }), []);
+});
