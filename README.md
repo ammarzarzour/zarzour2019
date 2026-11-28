@@ -98,3 +98,7 @@ audit logging are implemented and tested.
 ## Return tracking dashboard sample
 
 The Travel control center (`docs/dashboard.html`) now shows a separate bilingual return-tracking panel using seven fixed fictional groups and an editable review date. It displays deadline and escalation counts through the shared `docs/return-tracking.mjs` rules. The existing `scripts/return-tracking.mjs` entry point re-exports those rules; run `node --test scripts/return-tracking.test.mjs`. Sample metrics are not included in the local register totals. The panel never reads traveler records, sends alerts, writes data, or performs payments. It is not a production tracker. Authentication, approved access policies and audit logging are still prerequisites for live integration.
+
+## Non-destructive Soft migration
+
+The bilingual project board offers **Merge backup without replacing** as a separate action. It validates the entire local and imported registers, skips identical records, rejects conflicting IDs or case-insensitive references, checks the combined backup limits, and asks before adding records. A changed register cancels the merge. No existing project is replaced or deleted by the merge action. It is local-only and intended to support migration to a separate hosting origin; no production hosting, backend, or data transfer has been enabled. Run `node --test scripts/soft-projects.test.mjs` to check the model and UI regression cases.
