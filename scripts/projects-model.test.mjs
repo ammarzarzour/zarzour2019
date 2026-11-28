@@ -224,40 +224,44 @@ test('portable Soft backups reject impossible or noncanonical UTC timestamps wit
 
 test('portable Soft export refuses an empty register that import cannot restore', () => {
   const timestamp = '2026-11-23T12:34:56.000Z';
-  assert.throws(() => exportProjectBackup([], timestamp), /Invalid or empty project register/);
+  assert.throws(() => exportProjectBackup([], timestamp), /Invalid project register/);
   const item = upsertProject([], valid, 'soft-backup-roundtrip').items[0];
   const exported = exportProjectBackup([item], timestamp);
   assert.deepEqual(importProjectBackup(exported), [item]);
 });
 
-test('incomplete completed projects cannot be restored or exported as completed', () => {
+// Preserve legacy records without relaxing readiness for new writes.
+test('historical completed projects survive backup and remain open until ready', () => {
   const completed = { ...valid, id: 'soft-incomplete', status: 'completed', stage: 'release', tasksDone: 2 };
   const ready = { ...completed, id: 'soft-ready', reference: 'SOFT-READY',
     acceptanceReady: true, securityReviewed: true, bilingualReviewed: true };
-  assert.deepEqual(safeProjects([completed]), []);
-  assert.deepEqual(safeProjects([completed, ready]), [ready]);
-  const timestamp = '2026-11-23T12:34:56.000Z';
-  assert.throws(() => exportProjectBackup([completed], timestamp), /Invalid or empty project register/);
-  const validBackup = JSON.parse(exportProjectBackup([ready], timestamp));
-  assert.throws(() => importProjectBackup(JSON.stringify({
-    ...validBackup, projects: [completed]
-  })), /Invalid, empty or duplicated project backup/);
-  assert.deepEqual(importProjectBackup(JSON.stringify(validBackup)), [ready]);
+  const historical = safeProjects([completed, ready]);
+  assert.equal(historical.length, 2);
+  assert.equal(historical[0].id, completed.id);
+  assert.equal(historical[0].acceptanceReady, false);
+  assert.deepEqual(importProjectBackup(exportProjectBackup(historical, '2026-11-23T12:34:56.000Z')), historical);
+  const metrics = projectMetrics(historical, '2026-12-02');
+  assert.equal(metrics.releaseReady, 1);
+  assert.equal(metrics.overdue, 1);
 });
 
-
-test('live edits reject incomplete completed records instead of preserving invalid project stores', () => {
-  const incomplete = { ...valid, id: 'soft-incomplete-existing', status: 'completed', stage: 'release', tasksDone: 2 };
+test('historical records allow corrections without relaxing completion checks', () => {
+  const incomplete = safeProjects([{ ...valid, id: 'soft-incomplete-existing', status: 'completed', stage: 'release', tasksDone: 2 }])[0];
   const before = [incomplete];
   const create = upsertProject(before, { ...valid, reference: 'SOFT-NEW' }, 'soft-new');
-  assert.deepEqual(create.errors, ['projectStore']);
-  assert.equal(create.items, before);
-  const edit = upsertProject(before, { ...valid, notes: 'edited' }, incomplete.id, incomplete);
-  assert.deepEqual(edit.errors, ['projectStore']);
-  assert.equal(edit.items, before);
-  assert.equal(before[0], incomplete);
+  assert.deepEqual(create.errors, []);
+  assert.equal(create.items.length, 2);
+  assert.equal(create.items[1], incomplete);
+  const rejected = upsertProject(before, { ...incomplete, notes: 'still incomplete' }, incomplete.id, incomplete);
+  assert.deepEqual(rejected.errors, ['readiness']);
+  assert.equal(rejected.items, before);
+  const edit = upsertProject(before, { ...incomplete, status: 'active' }, incomplete.id, incomplete);
+  assert.deepEqual(edit.errors, []);
+  assert.equal(edit.items[0].status, 'active');
   const ready = { ...incomplete, acceptanceReady: true, securityReviewed: true, bilingualReviewed: true };
-  const accepted = upsertProject([ready], { ...valid, reference: 'SOFT-NEW' }, 'soft-new');
+  const accepted = upsertProject(before, ready, incomplete.id, incomplete);
   assert.deepEqual(accepted.errors, []);
-  assert.equal(accepted.items.length, 2);
+  assert.equal(projectMetrics(accepted.items, '2026-12-02').releaseReady, 1);
+  assert.equal(before[0], incomplete);
+  assert.equal(incomplete.acceptanceReady, false);
 });
