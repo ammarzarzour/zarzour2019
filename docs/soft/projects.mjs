@@ -1,4 +1,4 @@
-import {deliveryReadiness,filterProjects,upsertProject,projectMetrics,safeProjects,statuses,validateProject,localToday,exportProjectBackup,importProjectBackup,PROJECT_BACKUP_MAX_BYTES} from "./projects-model.mjs";const key="zarzour-soft-projects-v1",languageKey="zarzour-soft-language",form=document.getElementById("project-form"),rows=document.getElementById("rows"),message=document.getElementById("message"),empty=document.getElementById("empty");let lang="ar",items=[],editingId=null,editingSnapshot=null;try{lang=localStorage.getItem(languageKey)==="en"?"en":"ar";const saved=localStorage.getItem(key);items=saved?safeProjects(JSON.parse(saved)):[]}catch{items=[]}
+import {mergeProjectBackup,deliveryReadiness,filterProjects,upsertProject,projectMetrics,safeProjects,statuses,validateProject,localToday,exportProjectBackup,importProjectBackup,PROJECT_BACKUP_MAX_BYTES} from "./projects-model.mjs";const key="zarzour-soft-projects-v1",languageKey="zarzour-soft-language",form=document.getElementById("project-form"),rows=document.getElementById("rows"),message=document.getElementById("message"),empty=document.getElementById("empty");let lang="ar",items=[],editingId=null,editingSnapshot=null;try{lang=localStorage.getItem(languageKey)==="en"?"en":"ar";const saved=localStorage.getItem(key);items=saved?safeProjects(JSON.parse(saved)):[]}catch{items=[]}
 const words={website:["موقع","Website"],mobile_app:["تطبيق","Mobile app"],internal_tool:["أداة داخلية","Internal tool"],automation:["أتمتة","Automation"],discovery:["اكتشاف","Discovery"],design:["تصميم","Design"],build:["بناء","Build"],validation:["تحقق","Validation"],release:["إصدار","Release"],maintenance:["صيانة","Maintenance"],planned:["مخطط","Planned"],active:["نشط","Active"],blocked:["متعثر","Blocked"],completed:["مكتمل","Completed"]},t=k=>words[k]?.[lang==="ar"?0:1]||k;function show(x,e=false){message.textContent=x;message.className=e?"message error":"message";message.hidden=false}function save(next=items,formSubmission=false){try{localStorage.setItem(key,JSON.stringify(next));return true}catch{show(formSubmission?(lang==="ar"?"لم يتم الحفظ؛ بقيت مدخلات النموذج متاحة. أعد المحاولة قبل مغادرة الصفحة.":"Not saved; form inputs are preserved. Retry before leaving this page."):(lang==="ar"?"تعذر الحفظ الدائم؛ التغييرات مؤقتة فقط.":"Permanent storage failed; changes are session-only."),true);return false}}
 function render(){const m=projectMetrics(items,localToday());for(const k of ["total","active","blocked","overdue","dueSoon","releaseReady"])document.getElementById("m-"+k).textContent=m[k];document.getElementById("m-progress").textContent=m.progress+"%";const shown=filterProjects(items,{query:document.getElementById("search").value,type:document.getElementById("filter-type").value,status:document.getElementById("filter-status").value});rows.replaceChildren();empty.hidden=shown.length>0;for(const item of shown){const ready=deliveryReadiness(item),tr=document.createElement("tr");for(const value of [item.reference,t(item.type),t(item.stage)]){const td=document.createElement("td");td.textContent=value;tr.append(td)}const state=document.createElement("select");state.dataset.statusId=item.id;for(const s of statuses){const o=document.createElement("option");o.value=s;o.textContent=t(s);o.selected=s===item.status;state.append(o)}const sc=document.createElement("td");sc.append(state);tr.append(sc);const rc=document.createElement("td"),badge=document.createElement("span");badge.className="badge"+(ready.blockers.length?" blocked":"");badge.textContent=ready.score+"%";badge.title=ready.blockers.join(", ");rc.append(badge);tr.append(rc);for(const value of [item.tasksDone+" / "+item.tasksTotal,item.targetDate]){const td=document.createElement("td");td.textContent=value;tr.append(td)}const ac=document.createElement("td"),del=document.createElement("button");del.className="danger";del.type="button";del.dataset.deleteId=item.id;del.textContent=lang==="ar"?"حذف":"Delete";const edit=document.createElement("button");edit.type="button";edit.dataset.editId=item.id;edit.textContent=lang==="ar"?"تعديل":"Edit";ac.append(edit,del);tr.append(ac);rows.append(tr)}}
 function applyLanguage(){document.documentElement.lang=lang;document.documentElement.dir=lang==="ar"?"rtl":"ltr";document.querySelectorAll("[data-ar]").forEach(n=>n.innerHTML=n.dataset[lang]);document.querySelectorAll("[data-ar-placeholder]").forEach(n=>n.placeholder=n.dataset[lang+"Placeholder"]);document.getElementById("language").textContent=lang==="ar"?"English":"العربية";render()}
@@ -79,8 +79,9 @@ document.getElementById("export-projects").addEventListener("click",()=>{
  }finally{if(url!==null)URL.revokeObjectURL(url)}
 });
 const importFile=document.getElementById("import-project-file");
-document.getElementById("import-projects").addEventListener("click",()=>importFile.click());
-let importBusy=false;
+let importBusy=false,importMode="replace";
+document.getElementById("import-projects").addEventListener("click",()=>{if(!importBusy){importMode="replace";importFile.click()}});
+document.getElementById("merge-projects")?.addEventListener("click",()=>{if(!importBusy){importMode="merge";importFile.click()}});
 importFile.addEventListener("change",async()=>{
  if(importBusy)return;
  const file=importFile.files?.[0];
@@ -89,7 +90,19 @@ importFile.addEventListener("change",async()=>{
  try{
   if(file.size>PROJECT_BACKUP_MAX_BYTES)throw Error("File too large");
   const restored=importProjectBackup(await file.text());
-  const {raw}=latestProjectsForBackup();
+  const {raw,latest}=latestProjectsForBackup();
+  if(importMode==="merge"){
+   const merged=mergeProjectBackup(latest,restored);
+   if(!merged.added){show(lang==="ar"?"لا توجد مشاريع جديدة؛ السجل لم يتغير.":"No new projects; register unchanged.");return}
+   const question=lang==="ar"?"إضافة "+merged.added+" مشروعاً دون استبدال السجلات الحالية؟":"Add "+merged.added+" projects without replacing existing records?";
+   if(!window.confirm(question))return;
+   if(localStorage.getItem(key)!==raw){show(lang==="ar"?"تغير السجل في نافذة أخرى؛ لم يُنفذ الدمج.":"Register changed in another tab; merge cancelled.",true);return}
+   if(!save(merged.items,true))return;
+   items=merged.items;
+   render();
+   show(lang==="ar"?"تم دمج "+merged.added+" مشروعاً دون حذف السجلات الحالية.":"Merged "+merged.added+" projects without deleting existing records.");
+   return;
+  }
   const warning=lang==="ar"
    ?"سيُستبدل سجل مشاريع زرزور سوفت المحلي بالكامل بـ "+restored.length+" مشروعاً من الملف. لا يمكن التراجع. هل تريد المتابعة؟"
    :"Replace the entire local Zarzour Soft project register with "+restored.length+" projects from this file? This cannot be undone. Continue?";
